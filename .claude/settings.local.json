@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(winget:*)",
+      "Bash(py -3.11 --version:*)",
+      "Bash(py:*)",
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(cat:*)",
+      "Bash(nvidia-smi:*)",
+      "WebSearch",
+      "Bash(test:*)",
+      "Bash(docker run:*)",
+      "Bash(curl:*)",
+      "Bash(gh:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash(\"/c/Program Files (x86)/GitHub CLI/gh.exe\" --version)",
+      "Bash(\"/c/Program Files (x86)/GitHub CLI/gh.exe\" auth login --web)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ]
+  },
+  "outputStyle": "default"
+}

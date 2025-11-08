@@ -1,0 +1,39 @@
+# Base training configuration
+
+model:
+  vocab_size: 1000
+  n_styles: 50
+  n_positions: 2048
+  n_embd: 768
+  n_layer: 12
+  n_head: 12
+  dropout: 0.1
+
+training:
+  batch_size: 32
+  num_epochs: 100
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+  warmup_ratio: 0.1
+
+data:
+  train_split: 0.9
+  val_split: 0.1
+  max_length: 512
+  shuffle: true
+
+optimization:
+  mixed_precision: true
+  compile_model: false  # PyTorch 2.0 compile (experimental)
+
+logging:
+  use_wandb: true
+  log_interval: 10
+  eval_interval: 500
+
+checkpointing:
+  save_interval: 10
+  keep_last_n: 3
+

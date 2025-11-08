@@ -1,0 +1,405 @@
+# Cursor IDE AI Rules for Drum Pattern Generator Project
+
+## Project Identity
+
+You are an expert AI assistant helping develop a modern PyTorch-based MIDI drum pattern generator for Ableton Live 12. This project uses ONLY modern, actively maintained libraries and explicitly avoids legacy components.
+
+## Critical Constraints
+
+### NEVER Use These Legacy Components
+- ❌ Magenta (TensorFlow-based, inactive repository)
+- ❌ GrooVAE, MusicVAE, Drums RNN (legacy TensorFlow 1.x models)
+- ❌ pretty-midi (abandoned since 2020)
+- ❌ pylive (unverified Live 12 compatibility)
+- ❌ Any TensorFlow dependencies
+
+### ALWAYS Use These Modern Alternatives
+- ✅ PyTorch 2.4+ with CUDA 12.1+
+- ✅ mido 1.3.3 for MIDI I/O
+- ✅ MidiTok 2.1+ for tokenization
+- ✅ HuggingFace Transformers 4.40+
+- ✅ FastAPI 0.121.0+ for REST API
+- ✅ Celery 5.5.3+ for async tasks
+- ✅ Redis 7.0+ for queue management
+
+## Code Style and Standards
+
+### Python Version
+- Target: Python 3.11
+- Use modern Python features (match/case, type hints, dataclasses)
+- Follow PEP 8 with Black formatter (line length: 100)
+
+### Type Hints
+```python
+# Always use comprehensive type hints
+from typing import List, Dict, Optional, Tuple
+import torch
+from pathlib import Path
+
+def generate_pattern(
+    style: str,
+    bars: int,
+    time_signature: Tuple[int, int],
+    tempo: int,
+    device: torch.device = torch.device("cuda")
+) -> torch.Tensor:
+    """Generate drum pattern with specified parameters."""
+    pass
+```
+
+### Error Handling
+```python
+# Use specific exceptions and proper error messages
+class PatternGenerationError(Exception):
+    """Raised when pattern generation fails."""
+    pass
+
+try:
+    pattern = model.generate(tokens)
+except torch.cuda.OutOfMemoryError:
+    logger.error("GPU OOM during generation, falling back to CPU")
+    pattern = model.to("cpu").generate(tokens)
+```
+
+### Async Operations
+```python
+# Use async/await for I/O operations
+from fastapi import FastAPI
+import asyncio
+
+@app.post("/generate")
+async def generate_pattern(request: PatternRequest):
+    task = tasks.generate_pattern.delay(request.dict())
+    return {"task_id": task.id}
+```
+
+## MIDI Operations Guidelines
+
+### Use mido for All MIDI Operations
+```python
+# CORRECT - Use mido
+import mido
+from mido import MidiFile, MidiTrack, Message
+
+mid = MidiFile()
+track = MidiTrack()
+track.append(Message('note_on', note=36, velocity=80, time=0))
+track.append(Message('note_off', note=36, time=480))
+mid.tracks.append(track)
+mid.save('pattern.mid')
+```
+
+### NEVER Import Legacy Libraries
+```python
+# WRONG - DO NOT USE
+import magenta  # ❌ Legacy TensorFlow
+import pretty_midi  # ❌ Abandoned library
+from magenta.models.music_vae import TrainedModel  # ❌ Legacy
+```
+
+## PyTorch Model Guidelines
+
+### Model Architecture
+```python
+import torch
+import torch.nn as nn
+from transformers import GPT2Config, GPT2LMHeadModel
+
+class DrumPatternTransformer(nn.Module):
+    """Custom Transformer for drum pattern generation."""
+    
+    def __init__(self, vocab_size: int, n_positions: int = 2048):
+        super().__init__()
+        config = GPT2Config(
+            vocab_size=vocab_size,
+            n_positions=n_positions,
+            n_embd=768,
+            n_layer=12,
+            n_head=12,
+        )
+        self.transformer = GPT2LMHeadModel(config)
+    
+    def forward(self, input_ids: torch.Tensor, **kwargs):
+        return self.transformer(input_ids=input_ids, **kwargs)
+```
+
+### Training Loop Best Practices
+```python
+# Use modern PyTorch patterns
+from torch.utils.data import DataLoader
+from torch.optim import AdamW
+from torch.amp import autocast, GradScaler
+
+scaler = GradScaler()
+optimizer = AdamW(model.parameters(), lr=5e-5)
+
+for batch in dataloader:
+    optimizer.zero_grad()
+    
+    with autocast(device_type='cuda'):
+        outputs = model(batch['input_ids'])
+        loss = outputs.loss
+    
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+```
+
+## MidiTok Integration
+
+### Tokenization Pipeline
+```python
+from miditok import REMI, TokenizerConfig
+from pathlib import Path
+
+# Initialize tokenizer
+config = TokenizerConfig(
+    use_chords=False,
+    use_programs=False,  # Drums only
+    use_pitch_intervals=False,
+    beat_res={(0, 4): 8, (4, 12): 4},  # Variable resolution
+    num_velocities=32,
+    special_tokens=["PAD", "BOS", "EOS"],
+)
+tokenizer = REMI(config)
+
+# Tokenize MIDI file
+midi_path = Path("groove_midi/drummer1/session1/01.mid")
+tokens = tokenizer(midi_path)
+```
+
+## FastAPI Endpoint Structure
+
+```python
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from pydantic import BaseModel, Field
+from typing import Literal
+
+app = FastAPI(title="Drum Pattern Generator API")
+
+class PatternRequest(BaseModel):
+    producer_style: str = Field(..., description="Producer name for style emulation")
+    bars: int = Field(4, ge=1, le=32)
+    time_signature: Tuple[int, int] = (4, 4)
+    tempo: int = Field(120, ge=40, le=300)
+    humanize: bool = True
+
+@app.post("/api/v1/generate")
+async def generate_pattern(request: PatternRequest):
+    """Generate drum pattern asynchronously."""
+    # Validation
+    if request.producer_style not in AVAILABLE_STYLES:
+        raise HTTPException(404, f"Style '{request.producer_style}' not found")
+    
+    # Queue task
+    task = tasks.generate_pattern.delay(request.dict())
+    return {"task_id": task.id, "status": "queued"}
+```
+
+## Celery Task Definitions
+
+```python
+from celery import Celery
+import torch
+
+celery_app = Celery(
+    'drum_generator',
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/0'
+)
+
+@celery_app.task(bind=True, max_retries=3)
+def generate_pattern(self, params: dict) -> dict:
+    """Generate drum pattern in background."""
+    try:
+        # Load model
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = load_model(params['producer_style']).to(device)
+        
+        # Generate
+        pattern = model.generate(**params)
+        
+        # Export MIDI
+        midi_path = export_midi(pattern, params)
+        
+        return {"status": "complete", "midi_path": str(midi_path)}
+    
+    except Exception as exc:
+        self.retry(exc=exc, countdown=60)
+```
+
+## File Organization Rules
+
+### Import Order
+```python
+# 1. Standard library
+import os
+import sys
+from pathlib import Path
+from typing import List, Dict, Optional
+
+# 2. Third-party packages
+import torch
+import torch.nn as nn
+from fastapi import FastAPI
+import mido
+
+# 3. Local imports
+from src.models.transformer import DrumPatternTransformer
+from src.midi.utils import export_midi
+from src.tasks.worker import celery_app
+```
+
+### Directory Structure Conventions
+```
+src/
+├── api/           # FastAPI routes and models
+├── models/        # PyTorch model definitions
+├── tasks/         # Celery task definitions
+├── midi/          # MIDI processing (mido-based)
+├── training/      # Training scripts and data loaders
+├── ableton/       # Ableton integration (MIDI/OSC)
+└── utils/         # Shared utilities
+```
+
+## Testing Standards
+
+### Unit Tests
+```python
+import pytest
+import torch
+from src.models.transformer import DrumPatternTransformer
+
+def test_model_forward_pass():
+    """Test model can perform forward pass."""
+    model = DrumPatternTransformer(vocab_size=1000)
+    input_ids = torch.randint(0, 1000, (2, 128))
+    
+    outputs = model(input_ids)
+    
+    assert outputs.logits.shape == (2, 128, 1000)
+    assert not torch.isnan(outputs.logits).any()
+```
+
+### Integration Tests
+```python
+@pytest.mark.integration
+async def test_pattern_generation_endpoint(client):
+    """Test end-to-end pattern generation."""
+    response = await client.post("/api/v1/generate", json={
+        "producer_style": "J Dilla",
+        "bars": 4,
+        "time_signature": [4, 4],
+        "tempo": 95
+    })
+    
+    assert response.status_code == 200
+    assert "task_id" in response.json()
+```
+
+## Documentation Standards
+
+### Docstrings
+```python
+def humanize_pattern(
+    pattern: torch.Tensor,
+    timing_variance: float = 0.015,
+    velocity_variance: float = 0.1
+) -> torch.Tensor:
+    """
+    Apply humanization to drum pattern.
+    
+    Args:
+        pattern: Tokenized drum pattern (batch_size, seq_len)
+        timing_variance: Max timing offset in seconds (default: 15ms)
+        velocity_variance: Max velocity variation as fraction (default: 10%)
+    
+    Returns:
+        Humanized pattern with timing and velocity adjustments
+    
+    Example:
+        >>> pattern = torch.tensor([[36, 42, 38, 42]])
+        >>> humanized = humanize_pattern(pattern, timing_variance=0.02)
+    """
+    pass
+```
+
+## Context Engineering Usage
+
+When working in Cursor IDE:
+
+1. **Use @docs for Documentation**: `@docs architecture.md` to load architectural context
+2. **Use @folder for Code**: `@folder src/models` to load model implementations
+3. **Reference Specific Files**: `@file src/midi/export.py` for MIDI export operations
+4. **Load Context Documents**: `@file .cursorcontext/05_ml_pipeline.md` for ML guidance
+
+## Performance Considerations
+
+### GPU Memory Management
+```python
+# Clear cache between generations
+torch.cuda.empty_cache()
+
+# Use gradient checkpointing for large models
+model.gradient_checkpointing_enable()
+
+# Monitor memory usage
+if torch.cuda.is_available():
+    print(f"GPU Memory: {torch.cuda.memory_allocated() / 1e9:.2f}GB")
+```
+
+### Batch Processing
+```python
+# Process patterns in batches
+def generate_batch(
+    styles: List[str],
+    batch_size: int = 8
+) -> List[torch.Tensor]:
+    """Generate multiple patterns efficiently."""
+    batches = [styles[i:i+batch_size] for i in range(0, len(styles), batch_size)]
+    results = []
+    
+    for batch in batches:
+        with torch.no_grad():
+            patterns = model.generate_batch(batch)
+        results.extend(patterns)
+    
+    return results
+```
+
+## Security Best Practices
+
+```python
+# Sanitize file paths
+from pathlib import Path
+
+def safe_path(user_input: str) -> Path:
+    """Validate and sanitize file paths."""
+    path = Path(user_input).resolve()
+    if not path.is_relative_to(ALLOWED_DIR):
+        raise ValueError("Path outside allowed directory")
+    return path
+
+# Environment variables for secrets
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+```
+
+## Common Pitfalls to Avoid
+
+1. **Don't mix sync and async**: Use `async def` consistently in FastAPI
+2. **Don't forget device placement**: Always specify `.to(device)` for tensors
+3. **Don't ignore OOM errors**: Implement fallback to CPU or smaller batches
+4. **Don't hardcode paths**: Use `Path` from pathlib and environment variables
+5. **Don't skip validation**: Use Pydantic models for all API inputs
+
+## Remember
+
+- Check `.cursorcontext/` directory for detailed context documents
+- Refer to `docs/` for comprehensive guides
+- Run `pytest` before committing
+- Use `ruff check` for linting
+- Follow the architecture defined in `.cursorcontext/02_architecture.md`

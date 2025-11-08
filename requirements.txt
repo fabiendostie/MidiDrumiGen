@@ -1,0 +1,90 @@
+# Drum Pattern Generator - Production Requirements
+# Python 3.11 required
+# Last verified: November 2025
+
+# ============================================================================
+# CORE ML DEPENDENCIES
+# ============================================================================
+
+# PyTorch - Use appropriate CUDA version
+# For CUDA 12.4 (recommended): pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+# For CUDA 12.1: pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu121
+# For CPU only: pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1
+torchvision==0.19.1
+transformers==4.46.3
+
+# ============================================================================
+# MIDI PROCESSING (Modern, NO legacy libraries)
+# ============================================================================
+
+mido==1.3.3                # PRIMARY MIDI library (actively maintained)
+miditoolkit==1.0.1         # Enhanced MIDI operations
+miditok==2.1.8             # Tokenization for ML models
+
+# ============================================================================
+# BACKEND INFRASTRUCTURE
+# ============================================================================
+
+fastapi==0.121.0           # REST API framework
+uvicorn[standard]==0.34.0  # ASGI server
+celery==5.5.3              # Task queue
+redis==7.0.1               # Redis client
+hiredis==3.0.0             # Redis performance boost
+
+# ============================================================================
+# DATA PROCESSING
+# ============================================================================
+
+numpy==2.0.2
+pandas==2.2.3
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+python-dotenv==1.0.1       # Environment variables
+pydantic==2.10.2           # Data validation
+pydantic-settings==2.6.1   # Settings management
+python-multipart==0.0.18   # File uploads
+
+# ============================================================================
+# OPTIONAL DEPENDENCIES
+# ============================================================================
+
+music21==9.9.1             # Advanced music analysis (OPTIONAL - heavy dependency)
+python-osc==1.9.0          # Ableton OSC communication (OPTIONAL)
+
+# ============================================================================
+# DEVELOPMENT DEPENDENCIES
+# ============================================================================
+
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+black==24.10.0             # Code formatter
+ruff==0.8.4                # Linter
+mypy==1.13.0               # Type checker
+
+# ============================================================================
+# MONITORING & LOGGING
+# ============================================================================
+
+structlog==24.4.0          # Structured logging
+sentry-sdk==2.19.2         # Error tracking
+
+# ============================================================================
+# TRAINING & EXPERIMENTATION (OPTIONAL)
+# ============================================================================
+
+wandb==0.19.1              # Experiment tracking
+matplotlib==3.10.0         # Visualization
+jupyter==1.1.1             # Notebooks
+
+# ============================================================================
+# LEGACY LIBRARIES TO AVOID
+# ============================================================================
+# ❌ magenta - TensorFlow-based, inactive repository
+# ❌ pretty-midi - Abandoned since 2020
+# ❌ pylive - Unverified Ableton Live 12 compatibility
+# ❌ tensorflow - Conflicts with PyTorch
