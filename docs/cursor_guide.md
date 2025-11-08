@@ -334,7 +334,7 @@ Is this a known issue?
 
 ```json
 {
-  "cursor.chat.modelName": "claude-3.5-sonnet",
+  "cursor.chat.modelName": "claude-4.5-sonnet",
   "cursor.chat.contextLength": 200000,
   "cursor.includeComposerInChat": true,
   "cursor.alwaysSearchWeb": false,

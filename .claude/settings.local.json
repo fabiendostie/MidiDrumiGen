@@ -17,7 +17,12 @@
       "Bash(\"/c/Program Files (x86)/GitHub CLI/gh.exe\" auth login --web)",
       "Bash(git init:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(\"/c/Program Files (x86)/GitHub CLI/gh.exe\" repo create MidiDrumiGen --public --source=. --description \"AI-powered MIDI drum pattern generator with producer style emulation. Built with PyTorch, FastAPI, and Celery for Ableton Live integration.\" --push)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(\"/c/Program Files (x86)/GitHub CLI/gh.exe\" repo view fabiendostie/MidiDrumiGen)"
     ]
   },
   "outputStyle": "default"

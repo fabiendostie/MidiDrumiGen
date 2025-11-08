@@ -358,3 +358,4 @@ Load these documents using `@docs` references in Cursor when working on specific
 - Minimum 8GB VRAM recommended for training
 - Use `.cursorrules` file for Cursor IDE AI behavior configuration
 - Run `scripts/verify_installation.py` after environment setup
+- always refer to 'c:/Users/lefab/Documents/Dev/MidiDrumiGen/.cursorcontext' for information in this project
