@@ -67,3 +67,14 @@ Thumbs.db
 # Redis
 dump.rdb
 
+# Project artifacts (ensure not re-added)
+output/
+
+# Unwanted docs in repo (keep locally; prevent re-adding)
+/CLAUDE.md
+/SETUP_COMPLETE.md
+/docs/cursor_guide.md
+/docs/CURSOR_WORKFLOW.md
+/docs/PHASE_*.md
+/docs/*TESTS_SUMMARY*.md
+
