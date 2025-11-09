@@ -93,10 +93,10 @@ def generate_pattern_task(
 
         # Generate pattern
         from src.inference.generate import generate_pattern
-        from src.models.styles import get_style_id
+        from src.models.styles import get_numeric_style_id
 
         try:
-            style_id = get_style_id(producer_style)
+            style_id = get_numeric_style_id(producer_style)
         except:
             style_id = 0  # Default style
 
@@ -155,7 +155,7 @@ def generate_pattern_task(
         # Export to MIDI
         self.update_state(state='PROGRESS', meta={'progress': 90, 'status': 'Exporting MIDI file...'})
 
-        from src.midi.export import export_pattern_to_midi
+        from src.midi.export import export_pattern
 
         # Create unique filename
         task_id = self.request.id
@@ -163,7 +163,7 @@ def generate_pattern_task(
         output_path = Path("output/patterns") / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        success = export_pattern_to_midi(
+        success = export_pattern(
             notes=notes,
             output_path=output_path,
             tempo=tempo,

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 # Producer style registry mapping style names to model IDs and parameters
 PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
     'J Dilla': {
+        'style_id': 0,  # Numeric ID for model conditioning
         'model_id': 'j_dilla_v1',
         'model_path': 'models/checkpoints/j_dilla_v1.pt',
         'description': 'Signature swing and soulful groove',
@@ -22,6 +23,7 @@ PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
         }
     },
     'Metro Boomin': {
+        'style_id': 1,  # Numeric ID for model conditioning
         'model_id': 'metro_boomin_v1',
         'model_path': 'models/checkpoints/metro_boomin_v1.pt',
         'description': 'Tight trap drums with rolls',
@@ -34,6 +36,7 @@ PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
         }
     },
     'Questlove': {
+        'style_id': 2,  # Numeric ID for model conditioning
         'model_id': 'questlove_v1',
         'model_path': 'models/checkpoints/questlove_v1.pt',
         'description': 'Dynamic funk drumming with ghost notes',
@@ -127,6 +130,27 @@ def get_style_id(style_name: str) -> str:
     """
     normalized_name = normalize_style_name(style_name)
     return PRODUCER_STYLES[normalized_name]['model_id']
+
+
+def get_numeric_style_id(style_name: str) -> int:
+    """
+    Get numeric style ID from style name for model conditioning.
+
+    Args:
+        style_name: Producer style name (e.g., "J Dilla")
+
+    Returns:
+        Numeric style ID (e.g., 0 for J Dilla, 1 for Metro Boomin, 2 for Questlove)
+
+    Raises:
+        StyleNotFoundError: If style not found
+
+    Example:
+        >>> get_numeric_style_id("J Dilla")
+        0
+    """
+    normalized_name = normalize_style_name(style_name)
+    return PRODUCER_STYLES[normalized_name]['style_id']
 
 
 def get_style_params(style_name: str) -> Dict[str, Any]:
