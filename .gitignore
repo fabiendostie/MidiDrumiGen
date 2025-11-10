@@ -67,3 +67,16 @@ Thumbs.db
 # Redis
 dump.rdb
 
+# Internal documentation (local only)
+CLAUDE.md
+SETUP_COMPLETE.md
+docs/COMPLETE_TEST_SUITE_SUMMARY.md
+docs/CURSOR_WORKFLOW.md
+docs/PHASE_3_COMPLETION.md
+docs/PHASE_3_HANDOVER.md
+docs/PHASE_4_COMPLETION.md
+docs/PHASE_4_HANDOVER.md
+docs/UNIT_TESTS_SUMMARY.md
+docs/cursor_guide.md
+docs/INTEGRATION_TESTS_SUMMARY.md
+
