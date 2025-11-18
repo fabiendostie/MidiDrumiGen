@@ -233,13 +233,19 @@ python -m spacy download en_core_web_sm
 
 ### 4. Setup PostgreSQL
 ```bash
-# Create database
-createdb mididrumigen_db
+# Option A: Using Docker (recommended for Windows/development)
+docker run -d --name postgres-mididrum \
+  -e POSTGRES_DB=mididrumigen_db \
+  -e POSTGRES_PASSWORD=changeme \
+  -e POSTGRES_USER=postgres \
+  -p 5432:5432 \
+  pgvector/pgvector:pg16
 
-# Enable pgvector extension
+# Option B: Using local PostgreSQL installation
+createdb mididrumigen_db
 psql -d mididrumigen_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
-# Run migrations
+# Run migrations (both options)
 alembic upgrade head
 ```
 
