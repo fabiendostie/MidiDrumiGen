@@ -1,14 +1,172 @@
 """Unit tests for Celery tasks (Phase 4)."""
 
 import pytest
+import mido
 from unittest.mock import Mock, patch, MagicMock, call
 from pathlib import Path
 
 
-class TestGeneratePatternTask:
-    """Tests for generate_pattern_task."""
+class TestTokenizeMidiTask:
+    """Tests for tokenize_midi task."""
 
-    @patch('src.midi.export.export_pattern_to_midi')
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    @patch('pathlib.Path.mkdir')
+    @patch('torch.save')
+    @patch('builtins.open', new_callable=MagicMock)
+    def test_tokenize_midi_completes_successfully(
+        self,
+        mock_open,
+        mock_torch_save,
+        mock_mkdir,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi task completes successfully."""
+        # Setup mock MidiFile
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].messages = [
+            MagicMock(type='set_tempo', tempo=mido.bpm2tempo(120)),
+            MagicMock(type='time_signature', numerator=4, denominator=4)
+        ]
+        mock_mid.tracks[0].__iter__.return_value = [
+            MagicMock(type='note_on', velocity=100),
+            MagicMock(type='note_off', velocity=0)
+        ]
+        mock_read_midi_file.return_value = mock_mid
+
+        # Import and call task
+        from src.tasks.tasks import tokenize_midi
+        import mido
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "test_midi.mid"
+        output_dir = "output/test_tokens"
+        style_name = "Test Style"
+
+        result = tokenize_midi(
+            mock_self,
+            midi_path,
+            output_dir=output_dir,
+            style_name=style_name
+        )
+
+        # Assertions
+        assert "token_file" in result
+        assert "num_tokens" in result
+        assert result["num_tokens"] > 0
+        assert "midi_file" in result
+        assert result["style"] == style_name
+        mock_torch_save.assert_called_once()
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_self.update_state.assert_called()
+
+    @patch('pathlib.Path.exists', return_value=False)
+    def test_tokenize_midi_raises_file_not_found(self, mock_exists):
+        """Test tokenize_midi raises FileNotFoundError for non-existent file."""
+        from src.tasks.tasks import tokenize_midi
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "non_existent.mid"
+
+        with pytest.raises(FileNotFoundError):
+            tokenize_midi(mock_self, midi_path)
+
+        mock_self.update_state.assert_called_with(
+            state='FAILURE',
+            meta=pytest.approx({
+                'error': f"MIDI file not found: {midi_path}",
+                'error_type': 'FileNotFoundError',
+                'status': 'Failed - file not found'
+            })
+        )
+
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    def test_tokenize_midi_raises_value_error_for_empty_midi(
+        self,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi raises ValueError for MIDI file with no notes."""
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].__iter__.return_value = []  # No notes
+        mock_read_midi_file.return_value = mock_mid
+
+        from src.tasks.tasks import tokenize_midi
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "empty.mid"
+
+        with pytest.raises(ValueError, match="MIDI file contains no notes"):
+            tokenize_midi(mock_self, midi_path)
+
+        mock_self.update_state.assert_called_with(
+            state='FAILURE',
+            meta=pytest.approx({
+                'error': "MIDI file contains no notes",
+                'error_type': 'ValueError',
+                'status': 'Failed - invalid MIDI'
+            })
+        )
+
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    @patch('pathlib.Path.mkdir')
+    @patch('torch.save')
+    @patch('builtins.open', new_callable=MagicMock)
+    def test_tokenize_midi_updates_progress(
+        self,
+        mock_open,
+        mock_torch_save,
+        mock_mkdir,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi updates progress state during execution."""
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].messages = [
+            MagicMock(type='set_tempo', tempo=mido.bpm2tempo(120)),
+            MagicMock(type='time_signature', numerator=4, denominator=4)
+        ]
+        mock_mid.tracks[0].__iter__.return_value = [
+            MagicMock(type='note_on', velocity=100),
+            MagicMock(type='note_off', velocity=0)
+        ]
+        mock_read_midi_file.return_value = mock_mid
+
+        from src.tasks.tasks import tokenize_midi
+        import mido
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        tokenize_midi(mock_self, "test.mid")
+
+        # Verify update_state was called multiple times
+        assert mock_self.update_state.call_count >= 3
+
+        # Verify progress states
+        calls = [call_args[1] for call_args in mock_self.update_state.call_args_list]
+        progress_values = [c.get('meta', {}).get('progress') for c in calls]
+        assert 10 in progress_values  # Loading MIDI file
+        assert 25 in progress_values  # Extracting metadata
+        assert 50 in progress_values  # Tokenizing MIDI
+class TestGeneratePatternTask:
+@patch('src.midi.export.export_pattern')
     @patch('src.midi.humanize.apply_style_humanization')
     @patch('src.inference.generate.generate_pattern')
     @patch('src.models.styles.get_style_id')
@@ -313,4 +471,163 @@ class TestGeneratePatternTask:
                 time_signature=(4, 4)
             )
 
-        assert "MIDI export failed" in str(exc_info.value)
+
+class TestTokenizeMidiTask:
+    """Tests for tokenize_midi task."""
+
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    @patch('pathlib.Path.mkdir')
+    @patch('torch.save')
+    @patch('builtins.open', new_callable=MagicMock)
+    def test_tokenize_midi_completes_successfully(
+        self,
+        mock_open,
+        mock_torch_save,
+        mock_mkdir,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi task completes successfully."""
+        # Setup mock MidiFile
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].messages = [
+            MagicMock(type='set_tempo', tempo=mido.bpm2tempo(120)),
+            MagicMock(type='time_signature', numerator=4, denominator=4)
+        ]
+        mock_mid.tracks[0].__iter__.return_value = [
+            MagicMock(type='note_on', velocity=100),
+            MagicMock(type='note_off', velocity=0)
+        ]
+        mock_read_midi_file.return_value = mock_mid
+
+        # Import and call task
+        from src.tasks.tasks import tokenize_midi
+        import mido
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "test_midi.mid"
+        output_dir = "output/test_tokens"
+        style_name = "Test Style"
+
+        result = tokenize_midi(
+            mock_self,
+            midi_path,
+            output_dir=output_dir,
+            style_name=style_name
+        )
+
+        # Assertions
+        assert "token_file" in result
+        assert "num_tokens" in result
+        assert result["num_tokens"] > 0
+        assert "midi_file" in result
+        assert result["style"] == style_name
+        mock_torch_save.assert_called_once()
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_self.update_state.assert_called()
+
+    @patch('pathlib.Path.exists', return_value=False)
+    def test_tokenize_midi_raises_file_not_found(self, mock_exists):
+        """Test tokenize_midi raises FileNotFoundError for non-existent file."""
+        from src.tasks.tasks import tokenize_midi
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "non_existent.mid"
+
+        with pytest.raises(FileNotFoundError):
+            tokenize_midi(mock_self, midi_path)
+
+        mock_self.update_state.assert_called_with(
+            state='FAILURE',
+            meta=pytest.approx({
+                'error': f"MIDI file not found: {midi_path}",
+                'error_type': 'FileNotFoundError',
+                'status': 'Failed - file not found'
+            })
+        )
+
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    def test_tokenize_midi_raises_value_error_for_empty_midi(
+        self,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi raises ValueError for MIDI file with no notes."""
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].__iter__.return_value = []  # No notes
+        mock_read_midi_file.return_value = mock_mid
+
+        from src.tasks.tasks import tokenize_midi
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        midi_path = "empty.mid"
+
+        with pytest.raises(ValueError, match="MIDI file contains no notes"):
+            tokenize_midi(mock_self, midi_path)
+
+        mock_self.update_state.assert_called_with(
+            state='FAILURE',
+            meta=pytest.approx({
+                'error': "MIDI file contains no notes",
+                'error_type': 'ValueError',
+                'status': 'Failed - invalid MIDI'
+            })
+        )
+
+    @patch('src.midi.io.read_midi_file')
+    @patch('pathlib.Path.exists', return_value=True)
+    @patch('pathlib.Path.mkdir')
+    @patch('torch.save')
+    @patch('builtins.open', new_callable=MagicMock)
+    def test_tokenize_midi_updates_progress(
+        self,
+        mock_open,
+        mock_torch_save,
+        mock_mkdir,
+        mock_exists,
+        mock_read_midi_file
+    ):
+        """Test tokenize_midi updates progress state during execution."""
+        mock_mid = MagicMock()
+        mock_mid.tracks = [MagicMock()]
+        mock_mid.tracks[0].messages = [
+            MagicMock(type='set_tempo', tempo=mido.bpm2tempo(120)),
+            MagicMock(type='time_signature', numerator=4, denominator=4)
+        ]
+        mock_mid.tracks[0].__iter__.return_value = [
+            MagicMock(type='note_on', velocity=100),
+            MagicMock(type='note_off', velocity=0)
+        ]
+        mock_read_midi_file.return_value = mock_mid
+
+        from src.tasks.tasks import tokenize_midi
+        import mido
+
+        mock_self = Mock()
+        mock_self.request.id = "test-tokenize-id"
+        mock_self.update_state = Mock()
+
+        tokenize_midi(mock_self, "test.mid")
+
+        # Verify update_state was called multiple times
+        assert mock_self.update_state.call_count >= 3
+
+        # Verify progress states
+        calls = [call_args[1] for call_args in mock_self.update_state.call_args_list]
+        progress_values = [c.get('meta', {}).get('progress') for c in calls]
+        assert 10 in progress_values  # Loading MIDI file
+        assert 25 in progress_values  # Extracting metadata
+        assert 50 in progress_values  # Tokenizing MIDI

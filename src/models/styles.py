@@ -48,6 +48,19 @@ PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
             'velocity_variation': 0.20,  # Very dynamic
         }
     },
+    'Timbaland': {
+        'style_id': 3,  # Numeric ID for model conditioning
+        'model_id': 'timbaland_v1',
+        'model_path': 'models/checkpoints/timbaland_v1.pt',
+        'description': 'Syncopated funk with experimental rhythms',
+        'preferred_tempo_range': (95, 115),
+        'humanization': {
+            'swing': 54.0,
+            'micro_timing_ms': 10.0,
+            'ghost_note_prob': 0.35,
+            'velocity_variation': 0.12,
+        }
+    },
 }
 
 
@@ -63,6 +76,8 @@ STYLE_ALIASES: Dict[str, str] = {
     'metro': 'Metro Boomin',
     'questlove': 'Questlove',
     'quest': 'Questlove',
+    'timbaland': 'Timbaland',
+    'timbo': 'Timbaland',
 }
 
 

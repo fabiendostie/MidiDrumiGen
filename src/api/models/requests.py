@@ -6,18 +6,22 @@ from enum import Enum
 
 
 class ProducerStyle(str, Enum):
-    """Available producer styles."""
+    """Available producer styles (legacy - for backward compatibility)."""
     J_DILLA = "J Dilla"
     METRO_BOOMIN = "Metro Boomin"
     QUESTLOVE = "Questlove"
 
 
 class PatternGenerationRequest(BaseModel):
-    """Request model for pattern generation."""
+    """Request model for pattern generation with dynamic producer names."""
 
-    producer_style: ProducerStyle = Field(
-        ...,
-        description="Producer style to emulate"
+    producer_name: Optional[str] = Field(
+        None,
+        description="Producer name (any name, e.g., 'Timbaland', 'Aphex Twin', 'J Dilla')"
+    )
+    producer_style: Optional[ProducerStyle] = Field(
+        None,
+        description="Producer style (legacy enum - use producer_name instead)"
     )
     bars: int = Field(
         default=4,
@@ -73,17 +77,58 @@ class PatternGenerationRequest(BaseModel):
             raise ValueError("Numerator must be between 1 and 16")
         return v
 
+    def get_producer_name(self) -> str:
+        """
+        Get the producer name, with fallback to legacy producer_style.
+
+        Returns:
+            Producer name string
+
+        Raises:
+            ValueError: If neither producer_name nor producer_style is provided
+        """
+        if self.producer_name:
+            return self.producer_name
+        elif self.producer_style:
+            return self.producer_style.value
+        else:
+            raise ValueError("Either producer_name or producer_style must be provided")
+
     class Config:
         json_schema_extra = {
-            "example": {
-                "producer_style": "J Dilla",
-                "bars": 4,
-                "tempo": 95,
-                "time_signature": [4, 4],
-                "humanize": True,
-                "pattern_type": "verse",
-                "temperature": 1.0,
-                "top_k": 50,
-                "top_p": 0.9
-            }
+            "examples": [
+                {
+                    "producer_name": "Timbaland",
+                    "bars": 4,
+                    "tempo": 100,
+                    "time_signature": [4, 4],
+                    "humanize": True,
+                    "pattern_type": "verse",
+                    "temperature": 1.0,
+                    "top_k": 50,
+                    "top_p": 0.9
+                },
+                {
+                    "producer_name": "Aphex Twin",
+                    "bars": 8,
+                    "tempo": 140,
+                    "time_signature": [4, 4],
+                    "humanize": True,
+                    "pattern_type": "break",
+                    "temperature": 1.2,
+                    "top_k": 50,
+                    "top_p": 0.9
+                },
+                {
+                    "producer_style": "J Dilla",
+                    "bars": 4,
+                    "tempo": 95,
+                    "time_signature": [4, 4],
+                    "humanize": True,
+                    "pattern_type": "verse",
+                    "temperature": 1.0,
+                    "top_k": 50,
+                    "top_p": 0.9
+                }
+            ]
         }

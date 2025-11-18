@@ -1,0 +1,10 @@
+{
+  "style": "timbaland",
+  "tempo": 125.0,
+  "time_signature": [
+    3,
+    4
+  ],
+  "num_tokens": 8250,
+  "source_midi": "16_latin-ando_125_beat_3-4.mid"
+}

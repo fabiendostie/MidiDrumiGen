@@ -1,0 +1,51 @@
+{
+  "producer_name": "Anderson .Paak",
+  "normalized_name": "anderson_paak",
+  "cached": false,
+  "cached_at": "2025-11-15T17:18:17.102651Z",
+  "style_params": {
+    "tempo_range": [
+      85,
+      105
+    ],
+    "swing_percentage": 58,
+    "micro_timing_ms": 8,
+    "ghost_note_prob": 0.45,
+    "velocity_variation": 0.22,
+    "quantization_grid": "16th",
+    "signature_techniques": [
+      "live drummer feel with programmed elements",
+      "syncopated hi-hat patterns",
+      "funk-influenced ghost notes",
+      "organic swing with electronic precision",
+      "layered percussion textures",
+      "vocal sample integration with drums",
+      "dynamic snare rolls",
+      "pocket-oriented groove"
+    ],
+    "genre_tags": [
+      "r&b",
+      "neo-soul",
+      "hip-hop",
+      "funk",
+      "jazz-fusion"
+    ],
+    "complexity_level": 0.65,
+    "description": "Anderson .Paak's drum programming blends live drummer sensibilities with modern production, featuring funk-influenced ghost notes, organic swing, and syncopated patterns. As both a drummer and producer, his style emphasizes groove pocket and dynamic variation with layered percussion that bridges traditional R&B and contemporary hip-hop."
+  },
+  "data_sources": {
+    "wikipedia": {
+      "found": true,
+      "url": "https://en.wikipedia.org/wiki/Anderson_.Paak"
+    },
+    "youtube": {
+      "found": false,
+      "video_count": 0
+    },
+    "midi_repositories": {
+      "found": false
+    }
+  },
+  "model_adapter_path": null,
+  "research_quality": "medium"
+}

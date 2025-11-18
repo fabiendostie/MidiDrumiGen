@@ -1,0 +1,52 @@
+{
+  "producer_name": "Aphex Twin",
+  "normalized_name": "aphex_twin",
+  "cached": false,
+  "cached_at": "2025-11-15T17:18:03.639124Z",
+  "style_params": {
+    "tempo_range": [
+      120,
+      180
+    ],
+    "swing_percentage": 50,
+    "micro_timing_ms": 2,
+    "ghost_note_prob": 0.15,
+    "velocity_variation": 0.25,
+    "quantization_grid": "32nd",
+    "signature_techniques": [
+      "complex breakbeat manipulation",
+      "rapid drill-n-bass patterns",
+      "glitchy percussion edits",
+      "amen break variations",
+      "polyrhythmic layering",
+      "extreme tempo changes",
+      "granular drum synthesis",
+      "chaotic hi-hat programming"
+    ],
+    "genre_tags": [
+      "electronic",
+      "IDM",
+      "drill and bass",
+      "breakbeat",
+      "ambient techno",
+      "experimental"
+    ],
+    "complexity_level": 0.9,
+    "description": "Aphex Twin's drum programming is characterized by highly complex, glitchy breakbeat manipulation with intricate polyrhythmic patterns and extreme technical precision. Known for pioneering drill-n-bass with chaotic, rapidly-edited amen breaks and unconventional rhythmic structures that push electronic music into experimental territory."
+  },
+  "data_sources": {
+    "wikipedia": {
+      "found": true,
+      "url": "https://en.wikipedia.org/wiki/Classics_(Aphex_Twin_album)"
+    },
+    "youtube": {
+      "found": false,
+      "video_count": 0
+    },
+    "midi_repositories": {
+      "found": false
+    }
+  },
+  "model_adapter_path": null,
+  "research_quality": "medium"
+}

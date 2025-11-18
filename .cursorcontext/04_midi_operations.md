@@ -1,635 +1,653 @@
-# MIDI Operations - Context Document
+# MIDI Operations - MidiDrumiGen v2.0
 
-**Document Type:** Knowledge Context (Domain Knowledge)  
-**Purpose:** MIDI protocol, drum mapping, humanization techniques  
-**Use Case:** Load when implementing MIDI I/O, export, or processing features
-
----
-
-## MIDI Fundamentals
-
-### MIDI Protocol Basics
-
-**MIDI** (Musical Instrument Digital Interface) is a technical standard for digital music communication.
-
-**Key Concepts:**
-- **Messages**: Note On, Note Off, Control Change, etc.
-- **Channels**: 16 channels (0-15 in code, 1-16 in spec)
-- **Note Numbers**: 0-127 (Middle C = 60)
-- **Velocity**: 0-127 (0 = note off, 1-127 = volume)
-- **Timing**: Measured in ticks (480-960 PPQ typical)
-
-**Channel 10 (Index 9)**: Reserved for percussion/drums in General MIDI
+**Version:** 2.0.0  
+**Last Updated:** 2025-11-17  
+**Library:** mido 1.3.2
 
 ---
 
-## General MIDI Drum Mapping
+## Overview
 
-### Standard GM Drum Kit (Channel 10)
+MIDI operations in v2.0 handle:
+1. **LLM JSON → MIDI Conversion** (NEW)
+2. **Humanization** (KEPT)
+3. **Style Transfer** (KEPT)
+4. **Validation** (ENHANCED)
+5. **Export** (ENHANCED)
 
-| MIDI Note | Drum Name            | Common Name  |
-|-----------|---------------------|--------------|
-| 35        | Acoustic Bass Drum  | Kick 2       |
-| 36        | Bass Drum 1         | Kick 1 ⭐    |
-| 37        | Side Stick          | Rimshot      |
-| 38        | Acoustic Snare      | Snare ⭐     |
-| 39        | Hand Clap           | Clap         |
-| 40        | Electric Snare      | Snare 2      |
-| 41        | Low Floor Tom       | Tom 1        |
-| 42        | Closed Hi-Hat       | Hi-Hat Closed ⭐ |
-| 43        | High Floor Tom      | Tom 2        |
-| 44        | Pedal Hi-Hat        | Hi-Hat Pedal |
-| 45        | Low Tom             | Tom 3        |
-| 46        | Open Hi-Hat         | Hi-Hat Open ⭐ |
-| 47        | Low-Mid Tom         | Tom 4        |
-| 48        | Hi-Mid Tom          | Tom 5        |
-| 49        | Crash Cymbal 1      | Crash ⭐     |
-| 50        | High Tom            | Tom 6        |
-| 51        | Ride Cymbal 1       | Ride ⭐      |
-| 52        | Chinese Cymbal      | China        |
-| 53        | Ride Bell           | Bell         |
-| 54        | Tambourine          | Tambourine   |
-| 55        | Splash Cymbal       | Splash       |
-| 56        | Cowbell             | Cowbell      |
-| 57        | Crash Cymbal 2      | Crash 2      |
-| 58        | Vibraslap           | Vibraslap    |
-| 59        | Ride Cymbal 2       | Ride 2       |
-| 60        | Hi Bongo            | Bongo High   |
-| 61        | Low Bongo           | Bongo Low    |
-| 62        | Mute Hi Conga       | Conga Mute   |
-| 63        | Open Hi Conga       | Conga Open   |
-| 64        | Low Conga           | Conga Low    |
-| 65        | High Timbale        | Timbale High |
-| 66        | Low Timbale         | Timbale Low  |
-| 67        | High Agogo          | Agogo High   |
-| 68        | Low Agogo           | Agogo Low    |
-| 69        | Cabasa              | Cabasa       |
-| 70        | Maracas             | Maracas      |
-| 71        | Short Whistle       | Whistle Short|
-| 72        | Long Whistle        | Whistle Long |
-| 73        | Short Guiro         | Guiro Short  |
-| 74        | Long Guiro          | Guiro Long   |
-| 75        | Claves              | Claves       |
-| 76        | Hi Wood Block       | Block High   |
-| 77        | Low Wood Block      | Block Low    |
-| 78        | Mute Cuica          | Cuica Mute   |
-| 79        | Open Cuica          | Cuica Open   |
-| 80        | Mute Triangle       | Triangle Mute|
-| 81        | Open Triangle       | Triangle Open|
+**Key Change:** v2.0 generates MIDI from LLM JSON output instead of PyTorch model tokens.
 
-⭐ = Core drums used in most patterns
+---
 
-### Simplified Drum Set (Most Common)
+## Core MIDI Module
+
+Location: `src/midi/`
+
+### Files
+- `export.py` - JSON to MIDI conversion, file export
+- `humanize.py` - Timing and velocity humanization
+- `style_transfer.py` - Apply style characteristics
+- `validate.py` - MIDI structure validation
+- `constants.py` - GM drum mapping, MIDI constants
+- `io.py` - MIDI file I/O utilities
+
+---
+
+## 1. LLM JSON to MIDI Conversion (NEW)
+
+### Input Format (from LLM)
+```python
+{
+  "notes": [
+    {
+      "pitch": 36,      # MIDI note number (35-81 for drums)
+      "velocity": 90,   # 1-127
+      "time": 0,        # Position in ticks (480 per quarter note)
+      "duration": 120   # Note length in ticks
+    },
+    {
+      "pitch": 42,
+      "velocity": 70,
+      "time": 240,
+      "duration": 120
+    }
+  ],
+  "tempo": 120,
+  "time_signature": [4, 4],
+  "total_bars": 4
+}
+```
+
+### Conversion Function
+```python
+# src/midi/export.py
+
+from mido import MidiFile, MidiTrack, Message, MetaMessage
+from pathlib import Path
+from typing import Dict, List
+
+def json_to_midi(
+    midi_data: Dict,
+    output_path: Path,
+    humanize: bool = True,
+    style_params: Dict = None
+) -> Path:
+    """
+    Convert LLM JSON output to MIDI file.
+    
+    Args:
+        midi_data: JSON from LLM with notes array
+        output_path: Where to save MIDI file
+        humanize: Apply timing/velocity variations
+        style_params: Optional style-specific humanization
+    
+    Returns:
+        Path to created MIDI file
+    """
+    mid = MidiFile()
+    track = MidiTrack()
+    mid.tracks.append(track)
+    
+    # Set tempo
+    tempo_bpm = midi_data.get('tempo', 120)
+    tempo_us = mido.bpm2tempo(tempo_bpm)
+    track.append(MetaMessage('set_tempo', tempo=tempo_us, time=0))
+    
+    # Set time signature
+    ts = midi_data.get('time_signature', [4, 4])
+    track.append(MetaMessage(
+        'time_signature',
+        numerator=ts[0],
+        denominator=ts[1],
+        time=0
+    ))
+    
+    # Sort notes by time
+    notes = sorted(midi_data['notes'], key=lambda n: n['time'])
+    
+    # Convert to MIDI messages
+    current_time = 0
+    note_offs = []  # Track note_off messages
+    
+    for note in notes:
+        # Calculate delta time from last event
+        delta_time = note['time'] - current_time
+        
+        # Apply humanization if enabled
+        if humanize:
+            delta_time, velocity = apply_humanization(
+                delta_time,
+                note['velocity'],
+                style_params
+            )
+        else:
+            velocity = note['velocity']
+        
+        # Note on
+        track.append(Message(
+            'note_on',
+            note=note['pitch'],
+            velocity=velocity,
+            time=delta_time
+        ))
+        
+        # Schedule note off
+        note_offs.append({
+            'time': note['time'] + note['duration'],
+            'pitch': note['pitch']
+        })
+        
+        current_time = note['time']
+    
+    # Add note off messages
+    note_offs.sort(key=lambda n: n['time'])
+    for note_off in note_offs:
+        delta_time = note_off['time'] - current_time
+        track.append(Message(
+            'note_off',
+            note=note_off['pitch'],
+            velocity=0,
+            time=delta_time
+        ))
+        current_time = note_off['time']
+    
+    # Save file
+    mid.save(output_path)
+    return output_path
+```
+
+---
+
+## 2. Humanization
+
+### Purpose
+Add micro-variations to make MIDI sound less robotic and more like a human drummer.
+
+### Parameters
+```python
+@dataclass
+class HumanizationParams:
+    swing: float = 50.0               # 50-67% (50=straight, 62=swing)
+    micro_timing_ms: float = 10.0     # ±timing offset in milliseconds
+    velocity_variation: float = 0.12   # ±12% velocity variation
+    ghost_note_prob: float = 0.0       # Probability to add ghost notes
+```
+
+### Implementation
+```python
+# src/midi/humanize.py
+
+import random
+import numpy as np
+
+def apply_humanization(
+    delta_time: int,
+    velocity: int,
+    params: HumanizationParams
+) -> tuple[int, int]:
+    """
+    Apply humanization to timing and velocity.
+    
+    Args:
+        delta_time: Original timing in ticks
+        velocity: Original velocity (1-127)
+        params: Humanization parameters
+    
+    Returns:
+        (humanized_time, humanized_velocity)
+    """
+    # Apply swing (affects timing on off-beats)
+    if params.swing != 50.0:
+        delta_time = apply_swing(delta_time, params.swing)
+    
+    # Apply micro-timing variations
+    variance_ticks = int((params.micro_timing_ms / 1000) * 480)  # 480 tpqn
+    timing_offset = random.randint(-variance_ticks, variance_ticks)
+    delta_time = max(0, delta_time + timing_offset)
+    
+    # Apply velocity variations
+    velocity_offset = int(velocity * random.uniform(
+        -params.velocity_variation,
+        params.velocity_variation
+    ))
+    humanized_velocity = np.clip(velocity + velocity_offset, 1, 127)
+    
+    return delta_time, int(humanized_velocity)
+
+
+def apply_swing(delta_time: int, swing_percent: float) -> int:
+    """
+    Apply swing feel to timing.
+    
+    Swing delays the off-beat notes (2nd, 4th, 6th, 8th of 8th notes).
+    
+    Args:
+        delta_time: Original timing
+        swing_percent: 50-67 (50=straight, 62=typical swing)
+    
+    Returns:
+        Adjusted timing
+    """
+    # Detect if this is an off-beat (every other 8th note)
+    eighth_note_ticks = 240  # At 480 tpqn
+    position_in_beat = delta_time % eighth_note_ticks
+    
+    if position_in_beat == 0:  # This is an off-beat
+        # Calculate swing delay
+        swing_ratio = swing_percent / 50.0  # 1.0 = straight, 1.24 = 62% swing
+        swing_delay = int(eighth_note_ticks * (swing_ratio - 1.0))
+        return delta_time + swing_delay
+    
+    return delta_time
+
+
+def add_ghost_notes(
+    notes: List[Dict],
+    probability: float = 0.3
+) -> List[Dict]:
+    """
+    Add ghost notes (soft hi-hat or snare hits) to pattern.
+    
+    Args:
+        notes: Existing note list
+        probability: Chance to add ghost note (0.0-1.0)
+    
+    Returns:
+        Notes with ghost notes added
+    """
+    ghost_notes = []
+    
+    # Find spaces between notes where ghost notes can go
+    for i in range(len(notes) - 1):
+        if random.random() < probability:
+            # Add ghost note between current and next note
+            time_gap = notes[i+1]['time'] - notes[i]['time']
+            
+            if time_gap > 240:  # Only if gap is > 8th note
+                ghost_time = notes[i]['time'] + (time_gap // 2)
+                ghost_notes.append({
+                    'pitch': 42,  # Closed hi-hat
+                    'velocity': random.randint(30, 50),  # Soft
+                    'time': ghost_time,
+                    'duration': 60
+                })
+    
+    # Merge and sort
+    all_notes = notes + ghost_notes
+    return sorted(all_notes, key=lambda n: n['time'])
+```
+
+---
+
+## 3. Style Transfer
+
+Apply style-specific characteristics from StyleProfile.
+
+```python
+# src/midi/style_transfer.py
+
+from typing import Dict, List
+from dataclasses import dataclass
+
+@dataclass
+class StyleCharacteristics:
+    """Style characteristics from StyleProfile."""
+    tempo_range: tuple[int, int]  # (min, max) BPM
+    swing_percent: float           # 50-67%
+    ghost_note_prob: float         # 0.0-1.0
+    velocity_mean: int             # 40-120
+    velocity_std: int              # 5-30
+    syncopation_level: float       # 0.0-1.0
+
+
+def apply_style_transfer(
+    notes: List[Dict],
+    style: StyleCharacteristics
+) -> List[Dict]:
+    """
+    Apply style characteristics to MIDI notes.
+    
+    This modifies the notes to match the artist's documented style.
+    
+    Args:
+        notes: Original notes from LLM
+        style: Style characteristics from StyleProfile
+    
+    Returns:
+        Modified notes with style applied
+    """
+    # 1. Adjust velocities to match artist's typical range
+    notes = adjust_velocity_distribution(notes, style.velocity_mean, style.velocity_std)
+    
+    # 2. Add ghost notes if characteristic of artist
+    if style.ghost_note_prob > 0.2:
+        notes = add_ghost_notes(notes, style.ghost_note_prob)
+    
+    # 3. Apply syncopation patterns
+    if style.syncopation_level > 0.5:
+        notes = add_syncopation(notes, style.syncopation_level)
+    
+    return notes
+
+
+def adjust_velocity_distribution(
+    notes: List[Dict],
+    target_mean: int,
+    target_std: int
+) -> List[Dict]:
+    """
+    Adjust velocity distribution to match artist's typical dynamics.
+    """
+    import numpy as np
+    
+    # Calculate current distribution
+    velocities = [n['velocity'] for n in notes]
+    current_mean = np.mean(velocities)
+    current_std = np.std(velocities)
+    
+    # Adjust each velocity
+    for note in notes:
+        # Normalize to 0-1
+        normalized = (note['velocity'] - current_mean) / current_std
+        # Scale to target distribution
+        new_velocity = int(normalized * target_std + target_mean)
+        # Clip to valid range
+        note['velocity'] = np.clip(new_velocity, 1, 127)
+    
+    return notes
+```
+
+---
+
+## 4. Validation
+
+Ensure MIDI output is valid and playable.
+
+```python
+# src/midi/validate.py
+
+from typing import Dict, List, Optional
+
+class MIDIValidationError(Exception):
+    """Raised when MIDI validation fails."""
+    pass
+
+
+def validate_midi_json(midi_data: Dict) -> Optional[str]:
+    """
+    Validate LLM JSON output before conversion to MIDI.
+    
+    Args:
+        midi_data: JSON from LLM
+    
+    Returns:
+        None if valid, error message if invalid
+    """
+    # Check required fields
+    if 'notes' not in midi_data:
+        return "Missing 'notes' array"
+    
+    if not isinstance(midi_data['notes'], list):
+        return "'notes' must be an array"
+    
+    if len(midi_data['notes']) == 0:
+        return "Empty 'notes' array"
+    
+    # Validate each note
+    for i, note in enumerate(midi_data['notes']):
+        # Check required fields
+        required_fields = ['pitch', 'velocity', 'time', 'duration']
+        for field in required_fields:
+            if field not in note:
+                return f"Note {i} missing '{field}'"
+        
+        # Validate pitch (35-81 for GM drums)
+        if not (35 <= note['pitch'] <= 81):
+            return f"Note {i} pitch {note['pitch']} out of range (35-81)"
+        
+        # Validate velocity (1-127)
+        if not (1 <= note['velocity'] <= 127):
+            return f"Note {i} velocity {note['velocity']} out of range (1-127)"
+        
+        # Validate timing (non-negative)
+        if note['time'] < 0:
+            return f"Note {i} time {note['time']} is negative"
+        
+        # Validate duration (positive)
+        if note['duration'] <= 0:
+            return f"Note {i} duration {note['duration']} is non-positive"
+    
+    # Validate tempo
+    if 'tempo' in midi_data:
+        tempo = midi_data['tempo']
+        if not (40 <= tempo <= 300):
+            return f"Tempo {tempo} out of range (40-300 BPM)"
+    
+    # Validate time signature
+    if 'time_signature' in midi_data:
+        ts = midi_data['time_signature']
+        if not isinstance(ts, list) or len(ts) != 2:
+            return "time_signature must be [numerator, denominator]"
+        if ts[0] not in [3, 4, 5, 6, 7]:
+            return f"Invalid time signature numerator: {ts[0]}"
+        if ts[1] not in [4, 8]:
+            return f"Invalid time signature denominator: {ts[1]}"
+    
+    return None  # Valid
+
+
+def validate_midi_file(file_path: Path) -> bool:
+    """
+    Validate MIDI file can be read and is properly formatted.
+    
+    Args:
+        file_path: Path to MIDI file
+    
+    Returns:
+        True if valid, raises exception if invalid
+    """
+    try:
+        mid = MidiFile(file_path)
+        
+        # Check has at least one track
+        if len(mid.tracks) == 0:
+            raise MIDIValidationError("MIDI file has no tracks")
+        
+        # Check for note events
+        has_notes = False
+        for track in mid.tracks:
+            for msg in track:
+                if msg.type in ['note_on', 'note_off']:
+                    has_notes = True
+                    break
+        
+        if not has_notes:
+            raise MIDIValidationError("MIDI file has no note events")
+        
+        return True
+        
+    except Exception as e:
+        raise MIDIValidationError(f"Invalid MIDI file: {e}")
+```
+
+---
+
+## 5. GM Drum Mapping
+
+Standard General MIDI drum note assignments.
 
 ```python
 # src/midi/constants.py
-CORE_DRUMS = {
-    'kick': 36,
-    'snare': 38,
-    'hihat_closed': 42,
-    'hihat_open': 46,
-    'crash': 49,
-    'ride': 51,
-    'tom_low': 43,
-    'tom_mid': 47,
-    'tom_high': 50,
+
+# GM Drum Map (MIDI Channel 10)
+GM_DRUM_MAP = {
+    # Kick Drums
+    35: "Acoustic Bass Drum",
+    36: "Bass Drum 1",
+    
+    # Snares
+    38: "Acoustic Snare",
+    40: "Electric Snare",
+    37: "Side Stick",
+    
+    # Hi-Hats
+    42: "Closed Hi-Hat",
+    44: "Pedal Hi-Hat",
+    46: "Open Hi-Hat",
+    
+    # Cymbals
+    49: "Crash Cymbal 1",
+    51: "Ride Cymbal 1",
+    52: "Chinese Cymbal",
+    53: "Ride Bell",
+    55: "Splash Cymbal",
+    57: "Crash Cymbal 2",
+    59: "Ride Cymbal 2",
+    
+    # Toms
+    41: "Low Floor Tom",
+    43: "High Floor Tom",
+    45: "Low Tom",
+    47: "Low-Mid Tom",
+    48: "Hi-Mid Tom",
+    50: "High Tom",
+    
+    # Percussion
+    54: "Tambourine",
+    56: "Cowbell",
+    58: "Vibraslap",
+    60: "Hi Bongo",
+    61: "Low Bongo",
+    62: "Mute Hi Conga",
+    63: "Open Hi Conga",
+    64: "Low Conga",
+    65: "High Timbale",
+    66: "Low Timbale",
+    67: "High Agogo",
+    68: "Low Agogo",
+    69: "Cabasa",
+    70: "Maracas",
+    71: "Short Whistle",
+    72: "Long Whistle",
+    73: "Short Guiro",
+    74: "Long Guiro",
+    75: "Claves",
+    76: "Hi Wood Block",
+    77: "Low Wood Block",
+    78: "Mute Cuica",
+    79: "Open Cuica",
+    80: "Mute Triangle",
+    81: "Open Triangle",
 }
 
-# Reverse mapping
-DRUM_NAMES = {v: k for k, v in CORE_DRUMS.items()}
+# Common drum kit components for validation
+KICK_NOTES = [35, 36]
+SNARE_NOTES = [37, 38, 40]
+HIHAT_NOTES = [42, 44, 46]
+CRASH_NOTES = [49, 52, 55, 57]
+RIDE_NOTES = [51, 53, 59]
+TOM_NOTES = [41, 43, 45, 47, 48, 50]
+
+# MIDI constants
+TICKS_PER_QUARTER_NOTE = 480  # Standard resolution
+CHANNEL_DRUMS = 9  # MIDI channel 10 (0-indexed as 9)
 ```
 
 ---
 
-## MIDI File Structure
+## 6. Export Workflow
 
-### Standard MIDI File (SMF) Format
-
-**Header Chunk:**
-- Format type (0, 1, or 2)
-- Number of tracks
-- Time division (ticks per quarter note)
-
-**Track Chunks:**
-- Meta messages (tempo, time signature, track name)
-- MIDI events (note on/off, control change)
-- Delta times (time since last event)
-
-### Using mido to Create MIDI Files
-
-```python
-import mido
-from mido import MidiFile, MidiTrack, Message, MetaMessage
-
-def create_midi_file(
-    tempo: int = 120,
-    time_signature: tuple = (4, 4),
-    ticks_per_beat: int = 480
-) -> MidiFile:
-    """Create a new MIDI file with proper setup."""
-    
-    # Initialize file
-    mid = MidiFile(ticks_per_beat=ticks_per_beat)
-    track = MidiTrack()
-    mid.tracks.append(track)
-    
-    # Add track name
-    track.append(MetaMessage('track_name', name='Drums', time=0))
-    
-    # Add tempo (microseconds per quarter note)
-    tempo_value = mido.bpm2tempo(tempo)
-    track.append(MetaMessage('set_tempo', tempo=tempo_value, time=0))
-    
-    # Add time signature
-    numerator, denominator = time_signature
-    track.append(MetaMessage(
-        'time_signature',
-        numerator=numerator,
-        denominator=denominator,
-        clocks_per_click=24,
-        notated_32nd_notes_per_beat=8,
-        time=0
-    ))
-    
-    # Set channel to 10 (drums)
-    track.append(Message('program_change', program=0, channel=9, time=0))
-    
-    return mid, track
-```
-
-### Adding Notes
-
-```python
-def add_note(
-    track: MidiTrack,
-    note: int,
-    velocity: int,
-    start_time: int,
-    duration: int,
-    channel: int = 9  # Drums channel
-):
-    """Add a note to the track."""
-    
-    # Note On
-    track.append(Message(
-        'note_on',
-        note=note,
-        velocity=velocity,
-        time=start_time,
-        channel=channel
-    ))
-    
-    # Note Off
-    track.append(Message(
-        'note_off',
-        note=note,
-        velocity=0,
-        time=duration,
-        channel=channel
-    ))
-```
-
-### Delta Time Calculation
-
-**Delta time** = Time since last event in ticks
-
-```python
-def beats_to_ticks(beats: float, ticks_per_beat: int) -> int:
-    """Convert beats to MIDI ticks."""
-    return int(beats * ticks_per_beat)
-
-# Example: Quarter note at 480 PPQ
-quarter_note_ticks = beats_to_ticks(1.0, 480)  # 480
-eighth_note_ticks = beats_to_ticks(0.5, 480)   # 240
-sixteenth_note_ticks = beats_to_ticks(0.25, 480)  # 120
-```
-
----
-
-## Humanization Techniques
-
-### 1. Timing Variation (Swing & Micro-timing)
-
-**Purpose:** Make patterns feel less robotic, add groove
-
-**Swing Timing:**
-```python
-def apply_swing(note_time: int, swing_percentage: float, ticks_per_beat: int) -> int:
-    """
-    Apply swing to offbeat notes.
-    
-    Args:
-        note_time: Original note time in ticks
-        swing_percentage: 50-75 (50 = straight, 66 = triplet swing)
-        ticks_per_beat: Ticks per quarter note
-    
-    Returns:
-        Adjusted note time
-    """
-    eighth_note = ticks_per_beat / 2
-    
-    # Check if note is on an offbeat
-    if (note_time / eighth_note) % 2 == 1:
-        # Calculate swing offset
-        swing_offset = ((swing_percentage - 50) / 50) * (eighth_note / 4)
-        return int(note_time + swing_offset)
-    
-    return note_time
-
-# Examples:
-# 50% = straight (no swing)
-# 58% = slight swing (humanized)
-# 66% = triplet swing (jazz/hip-hop)
-# 75% = extreme swing
-```
-
-**Micro-timing (Random Offsets):**
-```python
-import random
-
-def apply_micro_timing(
-    note_time: int,
-    max_offset_ms: float = 15.0,
-    tempo: int = 120,
-    ticks_per_beat: int = 480
-) -> int:
-    """
-    Add subtle random timing variations.
-    
-    Args:
-        note_time: Original time in ticks
-        max_offset_ms: Maximum offset in milliseconds (±15ms typical)
-        tempo: BPM
-        ticks_per_beat: PPQ resolution
-    
-    Returns:
-        Humanized time in ticks
-    """
-    # Convert ms to ticks
-    ms_per_tick = (60000 / tempo) / ticks_per_beat
-    max_offset_ticks = int(max_offset_ms / ms_per_tick)
-    
-    # Add random offset
-    offset = random.randint(-max_offset_ticks, max_offset_ticks)
-    return max(0, note_time + offset)
-```
-
-### 2. Velocity Variation
-
-**Purpose:** Add dynamics and human feel
-
-```python
-def apply_velocity_variation(
-    base_velocity: int,
-    variation: float = 0.1,
-    min_velocity: int = 1,
-    max_velocity: int = 127
-) -> int:
-    """
-    Add random velocity variation.
-    
-    Args:
-        base_velocity: Original velocity (0-127)
-        variation: Percentage variation (0.1 = ±10%)
-        min_velocity: Minimum allowed velocity
-        max_velocity: Maximum allowed velocity
-    
-    Returns:
-        Humanized velocity
-    """
-    offset = int(base_velocity * variation * random.uniform(-1, 1))
-    new_velocity = base_velocity + offset
-    return max(min_velocity, min(max_velocity, new_velocity))
-```
-
-**Velocity Curves (Accent Patterns):**
-```python
-def apply_accent_pattern(
-    velocities: list[int],
-    accent_positions: list[int],
-    accent_boost: int = 20
-) -> list[int]:
-    """
-    Apply accent pattern to velocities.
-    
-    Args:
-        velocities: Original velocity values
-        accent_positions: Indices to accent (e.g., [0, 2] for beats 1 and 3)
-        accent_boost: Velocity increase for accents
-    
-    Returns:
-        Modified velocities
-    """
-    result = velocities.copy()
-    
-    for i in accent_positions:
-        if i < len(result):
-            # Boost accented notes
-            result[i] = min(127, result[i] + accent_boost)
-            
-            # Reduce adjacent notes slightly
-            if i > 0:
-                result[i-1] = max(1, result[i-1] - 5)
-            if i < len(result) - 1:
-                result[i+1] = max(1, result[i+1] - 5)
-    
-    return result
-```
-
-### 3. Ghost Notes
-
-**Purpose:** Add subtle, quiet notes between main hits (common in funk/hip-hop)
-
-```python
-def add_ghost_notes(
-    track: MidiTrack,
-    base_notes: list[dict],
-    probability: float = 0.3,
-    ghost_velocity: int = 30,
-    ghost_note: int = 38  # Snare
-):
-    """
-    Add ghost notes between main hits.
-    
-    Args:
-        track: MIDI track to modify
-        base_notes: List of main notes with 'time' and 'note' keys
-        probability: Chance of adding ghost note (0-1)
-        ghost_velocity: Velocity of ghost notes (20-40 typical)
-        ghost_note: MIDI note number for ghosts
-    """
-    for i in range(len(base_notes) - 1):
-        if random.random() < probability:
-            # Add ghost note between main notes
-            curr_time = base_notes[i]['time']
-            next_time = base_notes[i + 1]['time']
-            ghost_time = (curr_time + next_time) // 2
-            
-            track.append(Message(
-                'note_on',
-                note=ghost_note,
-                velocity=ghost_velocity,
-                time=ghost_time - curr_time,
-                channel=9
-            ))
-            track.append(Message(
-                'note_off',
-                note=ghost_note,
-                velocity=0,
-                time=10,  # Very short duration
-                channel=9
-            ))
-```
-
----
-
-## Pattern Validation
-
-### Musical Validation Rules
-
-```python
-def validate_drum_pattern(notes: list[dict]) -> tuple[bool, list[str]]:
-    """
-    Validate drum pattern for musical correctness.
-    
-    Args:
-        notes: List of note dicts with 'pitch', 'velocity', 'time'
-    
-    Returns:
-        (is_valid, error_messages)
-    """
-    errors = []
-    
-    # 1. Check note range
-    for note in notes:
-        if not (35 <= note['pitch'] <= 81):
-            errors.append(f"Invalid drum note: {note['pitch']}")
-    
-    # 2. Check velocity range
-    for note in notes:
-        if not (1 <= note['velocity'] <= 127):
-            errors.append(f"Invalid velocity: {note['velocity']}")
-    
-    # 3. Check density (notes per beat)
-    if notes:
-        duration = max(n['time'] for n in notes)
-        density = len(notes) / (duration / 480)  # Notes per beat
-        
-        if density < 0.5:
-            errors.append("Pattern too sparse (< 0.5 notes/beat)")
-        elif density > 16:
-            errors.append("Pattern too dense (> 16 notes/beat)")
-    
-    # 4. Check for simultaneous impossible hits
-    # (e.g., closed and open hi-hat at same time)
-    EXCLUSIVE_PAIRS = [
-        (42, 46),  # Closed/Open hi-hat
-        (36, 35),  # Two different kicks
-    ]
-    
-    time_groups = {}
-    for note in notes:
-        time_groups.setdefault(note['time'], []).append(note['pitch'])
-    
-    for time, pitches in time_groups.items():
-        for p1, p2 in EXCLUSIVE_PAIRS:
-            if p1 in pitches and p2 in pitches:
-                errors.append(f"Impossible simultaneous notes: {p1}, {p2} at time {time}")
-    
-    # 5. Check maximum simultaneous hits (realistic limit)
-    for time, pitches in time_groups.items():
-        if len(pitches) > 4:
-            errors.append(f"Too many simultaneous hits ({len(pitches)}) at time {time}")
-    
-    return len(errors) == 0, errors
-```
-
----
-
-## Complete Export Pipeline
-
-### Full Implementation
+Complete workflow from LLM output to MIDI file.
 
 ```python
 # src/midi/export.py
-import mido
-from pathlib import Path
-from typing import List, Dict, Tuple
-import random
 
-def export_pattern(
-    tokens: list[int],
-    tokenizer,
-    output_path: Path,
-    tempo: int = 120,
-    time_signature: Tuple[int, int] = (4, 4),
-    humanize: bool = True,
-    style_name: str = "Unknown"
+from pathlib import Path
+from typing import Dict, List
+import datetime
+
+def export_midi_from_llm(
+    llm_output: Dict,
+    artist_name: str,
+    variation_num: int,
+    style_profile: 'StyleProfile',
+    output_dir: Path = Path("output/patterns")
 ) -> Path:
     """
-    Export tokenized pattern to MIDI file.
+    Complete export workflow: LLM JSON → validated → humanized → MIDI file.
     
-    Complete pipeline:
-    1. Detokenize tokens to MIDI events
-    2. Validate pattern
-    3. Apply humanization (if enabled)
-    4. Add metadata
-    5. Write MIDI file
+    Args:
+        llm_output: JSON from LLM generation
+        artist_name: For filename
+        variation_num: Variation number (1-8)
+        style_profile: For style-specific humanization
+        output_dir: Where to save files
+    
+    Returns:
+        Path to created MIDI file
     """
+    # 1. Validate LLM output
+    error = validate_midi_json(llm_output)
+    if error:
+        raise MIDIValidationError(f"Invalid LLM output: {error}")
     
-    # 1. Detokenize
-    midi_events = tokenizer.decode(tokens)
+    # 2. Apply style transfer
+    notes = apply_style_transfer(
+        llm_output['notes'],
+        style_profile.to_style_characteristics()
+    )
+    llm_output['notes'] = notes
     
-    # 2. Validate
-    is_valid, errors = validate_drum_pattern(midi_events)
-    if not is_valid:
-        raise ValueError(f"Invalid pattern: {errors}")
+    # 3. Generate filename
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{artist_name}_var{variation_num}_{timestamp}.mid"
+    output_path = output_dir / filename
     
-    # 3. Create MIDI file
-    mid = MidiFile(ticks_per_beat=480)
-    track = MidiTrack()
-    mid.tracks.append(track)
+    # 4. Convert to MIDI with humanization
+    output_path = json_to_midi(
+        llm_output,
+        output_path,
+        humanize=True,
+        style_params=style_profile.quantitative_params
+    )
     
-    # Add metadata
-    track.append(MetaMessage('track_name', name=f'Drums - {style_name}', time=0))
-    track.append(MetaMessage('set_tempo', tempo=mido.bpm2tempo(tempo), time=0))
-    
-    numerator, denominator = time_signature
-    track.append(MetaMessage(
-        'time_signature',
-        numerator=numerator,
-        denominator=denominator,
-        clocks_per_click=24,
-        notated_32nd_notes_per_beat=8,
-        time=0
-    ))
-    
-    # 4. Process and add notes
-    last_time = 0
-    for event in sorted(midi_events, key=lambda e: e['time']):
-        # Get note properties
-        note_time = event['time']
-        pitch = event['pitch']
-        velocity = event['velocity']
-        
-        # Apply humanization
-        if humanize:
-            note_time = apply_micro_timing(note_time, max_offset_ms=15.0, tempo=tempo)
-            velocity = apply_velocity_variation(velocity, variation=0.1)
-        
-        # Calculate delta time
-        delta_time = note_time - last_time
-        
-        # Add note on
-        track.append(Message(
-            'note_on',
-            note=pitch,
-            velocity=velocity,
-            time=delta_time,
-            channel=9
-        ))
-        
-        # Add note off (short duration for drums)
-        track.append(Message(
-            'note_off',
-            note=pitch,
-            velocity=0,
-            time=10,
-            channel=9
-        ))
-        
-        last_time = note_time + 10
-    
-    # 5. Add end of track
-    track.append(MetaMessage('end_of_track', time=0))
-    
-    # 6. Save file
-    mid.save(output_path)
+    # 5. Validate final MIDI file
+    validate_midi_file(output_path)
     
     return output_path
 ```
 
 ---
 
-## Producer-Specific Styles
+## Quick Reference
 
-### Style Characteristics
+### Common Operations
 
+**Generate MIDI from LLM:**
 ```python
-# src/midi/styles.py
+midi_file = json_to_midi(llm_output, Path("output.mid"), humanize=True)
+```
 
-PRODUCER_STYLES = {
-    'j_dilla': {
-        'swing': 0.62,  # Signature Dilla swing
-        'micro_timing': 0.020,  # More variation
-        'ghost_note_prob': 0.4,
-        'velocity_variation': 0.15,
-        'preferred_tempo': (85, 95),
-        'characteristic_notes': [36, 38, 42],  # Kick, snare, closed hat
-    },
-    'metro_boomin': {
-        'swing': 0.52,  # Straighter timing
-        'micro_timing': 0.005,  # Tighter quantization
-        'ghost_note_prob': 0.1,
-        'velocity_variation': 0.08,
-        'preferred_tempo': (130, 150),
-        'characteristic_notes': [36, 38, 42, 49],  # Add crash
-        'trap_rolls': True,  # 32nd note hi-hat rolls
-    },
-    'questlove': {
-        'swing': 0.58,
-        'micro_timing': 0.012,
-        'ghost_note_prob': 0.5,  # Lots of ghosts
-        'velocity_variation': 0.20,  # Very dynamic
-        'preferred_tempo': (90, 110),
-        'characteristic_notes': [36, 38, 42, 46, 51],  # Full kit
-    },
-}
+**Validate before conversion:**
+```python
+if error := validate_midi_json(llm_output):
+    print(f"Invalid: {error}")
+```
 
-def apply_style_humanization(
-    notes: list[dict],
-    style: str,
-    tempo: int
-) -> list[dict]:
-    """Apply producer-specific humanization."""
-    style_params = PRODUCER_STYLES.get(style, {})
-    
-    humanized = []
-    for note in notes:
-        # Apply style-specific swing
-        if 'swing' in style_params:
-            note['time'] = apply_swing(
-                note['time'],
-                style_params['swing'] * 100,
-                480
-            )
-        
-        # Apply micro-timing
-        if 'micro_timing' in style_params:
-            note['time'] = apply_micro_timing(
-                note['time'],
-                style_params['micro_timing'] * 1000,
-                tempo,
-                480
-            )
-        
-        # Velocity variation
-        if 'velocity_variation' in style_params:
-            note['velocity'] = apply_velocity_variation(
-                note['velocity'],
-                style_params['velocity_variation']
-            )
-        
-        humanized.append(note)
-    
-    return humanized
+**Apply style transfer:**
+```python
+styled_notes = apply_style_transfer(notes, style_characteristics)
+```
+
+**Read MIDI file:**
+```python
+from mido import MidiFile
+mid = MidiFile("pattern.mid")
+for track in mid.tracks:
+    for msg in track:
+        print(msg)
 ```
 
 ---
 
-## Related Documents
-
-- **Project Overview**: `.cursorcontext/01_project_overview.md`
-- **Architecture**: `.cursorcontext/02_architecture.md`
-- **Dependencies**: `.cursorcontext/03_dependencies.md`
-- **ML Pipeline**: `.cursorcontext/05_ml_pipeline.md`
+**MIDI operations remain largely the same, with the main change being input source: LLM JSON instead of PyTorch tokens.**

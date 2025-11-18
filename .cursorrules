@@ -1,33 +1,48 @@
-# Cursor IDE AI Rules for Drum Pattern Generator Project
+# Cursor IDE AI Rules for MidiDrumiGen v2.0
 
 ## Project Identity
 
-You are an expert AI assistant helping develop a modern PyTorch-based MIDI drum pattern generator for Ableton Live 12. This project uses ONLY modern, actively maintained libraries and explicitly avoids legacy components.
+You are an expert AI assistant helping develop **MidiDrumiGen v2.0**, an intelligent Max for Live device that generates authentic drum patterns in the style of any artist using on-demand research and LLM-based generation. This project uses ONLY modern, actively maintained libraries and follows the BMAD-METHOD framework.
 
-## Critical Constraints
+## v2.0 Architecture (Critical Understanding)
 
-### NEVER Use These Legacy Components
-- ❌ Magenta (TensorFlow-based, inactive repository)
-- ❌ GrooVAE, MusicVAE, Drums RNN (legacy TensorFlow 1.x models)
-- ❌ pretty-midi (abandoned since 2020)
-- ❌ pylive (unverified Live 12 compatibility)
-- ❌ Any TensorFlow dependencies
+**THIS IS NOT A TRAINING PROJECT.** v2.0 uses:
+- ✅ On-demand multi-source research (web, audio, MIDI, scholarly)
+- ✅ LLM-based generation (OpenAI, Claude, Gemini)
+- ✅ PostgreSQL + pgvector for style profiles
+- ✅ Orchestrator-Agent architecture
+- ❌ NO PyTorch training
+- ❌ NO pre-trained models
+- ❌ NO tokenization
 
-### ALWAYS Use These Modern Alternatives
-- ✅ PyTorch 2.4+ with CUDA 12.1+
+### ALWAYS Use These v2.0 Components
+- ✅ FastAPI 0.115+ for REST API
+- ✅ Celery 5.4+ for async task processing
+- ✅ Redis 7.2+ for message queue
+- ✅ PostgreSQL 16+ with pgvector 0.3.6+
+- ✅ Anthropic 0.39+ (Primary LLM - Claude 3.5 Sonnet)
+- ✅ Google GenAI 0.8+ (Secondary LLM - Gemini 2.5/3)
+- ✅ OpenAI 1.54+ (Tertiary/Fallback LLM - ChatGPT 5.1)
+- ✅ BeautifulSoup4 4.12+ for web scraping
+- ✅ Librosa 0.10+ for audio analysis
+- ✅ spaCy 3.8+ for NLP
+- ✅ Sentence Transformers 3.3+ for embeddings
 - ✅ mido 1.3.3 for MIDI I/O
-- ✅ MidiTok 2.1+ for tokenization
-- ✅ HuggingFace Transformers 4.40+
-- ✅ FastAPI 0.121.0+ for REST API
-- ✅ Celery 5.5.3+ for async tasks
-- ✅ Redis 7.0+ for queue management
+
+### NEVER Use These (Removed from v1.x)
+- ❌ PyTorch / TensorFlow (no training in v2.0)
+- ❌ MidiTok (no tokenization needed)
+- ❌ Magenta / GrooVAE / MusicVAE (legacy)
+- ❌ pretty-midi (abandoned)
+- ❌ Any ML training frameworks
 
 ## Code Style and Standards
 
 ### Python Version
-- Target: Python 3.11
-- Use modern Python features (match/case, type hints, dataclasses)
+- Target: Python 3.11+ (Recommended: 3.12)
+- Use modern Python features (match/case, type hints, dataclasses, async/await)
 - Follow PEP 8 with Black formatter (line length: 100)
+- Use Ruff 0.8+ for linting
 
 ### Type Hints
 ```python
@@ -97,75 +112,123 @@ import pretty_midi  # ❌ Abandoned library
 from magenta.models.music_vae import TrainedModel  # ❌ Legacy
 ```
 
-## PyTorch Model Guidelines
+## LLM Provider Guidelines (v2.0 Core Feature)
 
-### Model Architecture
+### Multi-Provider Manager
 ```python
-import torch
-import torch.nn as nn
-from transformers import GPT2Config, GPT2LMHeadModel
+from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
+import google.generativeai as genai
+from typing import Optional, Dict, Any
 
-class DrumPatternTransformer(nn.Module):
-    """Custom Transformer for drum pattern generation."""
+class LLMProviderManager:
+    """Manages multiple LLM providers with automatic fallback."""
     
-    def __init__(self, vocab_size: int, n_positions: int = 2048):
-        super().__init__()
-        config = GPT2Config(
-            vocab_size=vocab_size,
-            n_positions=n_positions,
-            n_embd=768,
-            n_layer=12,
-            n_head=12,
-        )
-        self.transformer = GPT2LMHeadModel(config)
+    def __init__(self, config: Dict[str, str]):
+        self.openai_client = AsyncOpenAI(api_key=config.get("openai_key"))
+        self.anthropic_client = AsyncAnthropic(api_key=config.get("anthropic_key"))
+        genai.configure(api_key=config.get("google_key"))
+        self.providers = ["openai", "anthropic", "google"]
     
-    def forward(self, input_ids: torch.Tensor, **kwargs):
-        return self.transformer(input_ids=input_ids, **kwargs)
+    async def generate(
+        self,
+        prompt: str,
+        provider: str = "openai",
+        fallback: bool = True
+    ) -> Dict[str, Any]:
+        """Generate with automatic fallback on failure."""
+        try:
+            if provider == "openai":
+                return await self._generate_openai(prompt)
+            elif provider == "anthropic":
+                return await self._generate_claude(prompt)
+            elif provider == "google":
+                return await self._generate_gemini(prompt)
+        except Exception as e:
+            if fallback and len(self.providers) > 1:
+                # Try next provider
+                next_provider = self._get_next_provider(provider)
+                return await self.generate(prompt, next_provider, fallback=False)
+            raise
 ```
 
-### Training Loop Best Practices
+### Prompt Engineering for Drum Generation
 ```python
-# Use modern PyTorch patterns
-from torch.utils.data import DataLoader
-from torch.optim import AdamW
-from torch.amp import autocast, GradScaler
-
-scaler = GradScaler()
-optimizer = AdamW(model.parameters(), lr=5e-5)
-
-for batch in dataloader:
-    optimizer.zero_grad()
+def build_generation_prompt(
+    style_profile: StyleProfile,
+    params: GenerationParams
+) -> str:
+    """Construct detailed prompt for LLM drum generation."""
     
-    with autocast(device_type='cuda'):
-        outputs = model(batch['input_ids'])
-        loss = outputs.loss
-    
-    scaler.scale(loss).backward()
-    scaler.step(optimizer)
-    scaler.update()
+    prompt = f"""You are an expert drum programmer specializing in {style_profile.artist_name}'s style.
+
+STYLE PROFILE:
+- Tempo Range: {style_profile.tempo_range[0]}-{style_profile.tempo_range[1]} BPM
+- Swing: {style_profile.swing_percentage}%
+- Velocity Variation: {style_profile.velocity_variation}
+- Ghost Note Probability: {style_profile.ghost_note_probability}
+- Rhythmic Complexity: {style_profile.rhythmic_complexity}
+
+GENERATION PARAMETERS:
+- Bars: {params.bars}
+- Time Signature: {params.time_signature[0]}/{params.time_signature[1]}
+- Target Tempo: {params.tempo} BPM
+
+CONTEXT:
+{style_profile.textual_description}
+
+TASK:
+Generate a {params.bars}-bar drum pattern as JSON array with this structure:
+[
+  {{"time": 0.0, "note": 36, "velocity": 100, "duration": 0.1}},
+  ...
+]
+
+MIDI Note Reference:
+- 36: Kick
+- 38: Snare
+- 42: Closed Hi-Hat
+- 46: Open Hi-Hat
+- 49: Crash Cymbal
+
+Requirements:
+1. Strictly follow the style profile characteristics
+2. Use realistic velocities (ghost notes: 20-40, accents: 90-127)
+3. Include appropriate swing/shuffle based on style
+4. Maintain consistent time signature
+5. Return ONLY valid JSON (no markdown, no explanation)
+"""
+    return prompt
 ```
 
-## MidiTok Integration
-
-### Tokenization Pipeline
+### Research Pipeline Integration
 ```python
-from miditok import REMI, TokenizerConfig
-from pathlib import Path
+from typing import List, Dict
+import asyncio
 
-# Initialize tokenizer
-config = TokenizerConfig(
-    use_chords=False,
-    use_programs=False,  # Drums only
-    use_pitch_intervals=False,
-    beat_res={(0, 4): 8, (4, 12): 4},  # Variable resolution
-    num_velocities=32,
-    special_tokens=["PAD", "BOS", "EOS"],
-)
-tokenizer = REMI(config)
-
-# Tokenize MIDI file
-midi_path = Path("groove_midi/drummer1/session1/01.mid")
-tokens = tokenizer(midi_path)
+class ResearchOrchestrator:
+    """Coordinates multiple research collectors for artist analysis."""
+    
+    async def research_artist(self, artist_name: str) -> StyleProfile:
+        """Execute parallel research across all collectors."""
+        
+        # Launch collectors in parallel
+        tasks = [
+            self.scholar_collector.collect(artist_name),
+            self.midi_collector.collect(artist_name),
+            self.text_collector.collect(artist_name),
+            self.audio_collector.collect(artist_name),
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Synthesize into StyleProfile
+        profile = self._synthesize_profile(artist_name, results)
+        
+        # Store in database with embeddings
+        await self.db.store_profile(profile)
+        
+        return profile
 ```
 
 ## FastAPI Endpoint Structure
@@ -333,38 +396,76 @@ When working in Cursor IDE:
 3. **Reference Specific Files**: `@file src/midi/export.py` for MIDI export operations
 4. **Load Context Documents**: `@file .cursorcontext/05_ml_pipeline.md` for ML guidance
 
-## Performance Considerations
+## Performance Considerations (v2.0)
 
-### GPU Memory Management
+### Database Query Optimization
 ```python
-# Clear cache between generations
-torch.cuda.empty_cache()
+from sqlalchemy import select
+from pgvector.sqlalchemy import Vector
 
-# Use gradient checkpointing for large models
-model.gradient_checkpointing_enable()
-
-# Monitor memory usage
-if torch.cuda.is_available():
-    print(f"GPU Memory: {torch.cuda.memory_allocated() / 1e9:.2f}GB")
+async def find_similar_styles(
+    artist_embedding: List[float],
+    limit: int = 5
+) -> List[StyleProfile]:
+    """Find similar artists using vector search."""
+    
+    query = select(StyleProfile).order_by(
+        StyleProfile.embedding.cosine_distance(artist_embedding)
+    ).limit(limit)
+    
+    return await db.execute(query)
 ```
 
-### Batch Processing
+### Caching Strategy
 ```python
-# Process patterns in batches
-def generate_batch(
-    styles: List[str],
-    batch_size: int = 8
-) -> List[torch.Tensor]:
-    """Generate multiple patterns efficiently."""
-    batches = [styles[i:i+batch_size] for i in range(0, len(styles), batch_size)]
-    results = []
+from functools import lru_cache
+import redis
+
+# Redis cache for frequent lookups
+redis_client = redis.from_url(REDIS_URL)
+
+async def get_style_profile_cached(artist_name: str) -> Optional[StyleProfile]:
+    """Check cache before database query."""
     
-    for batch in batches:
-        with torch.no_grad():
-            patterns = model.generate_batch(batch)
-        results.extend(patterns)
+    # Try Redis first
+    cached = redis_client.get(f"profile:{artist_name}")
+    if cached:
+        return StyleProfile.parse_raw(cached)
     
-    return results
+    # Query database
+    profile = await db.get_profile(artist_name)
+    if profile:
+        # Cache for 24 hours
+        redis_client.setex(
+            f"profile:{artist_name}",
+            86400,
+            profile.json()
+        )
+    
+    return profile
+```
+
+### Async Task Processing
+```python
+from celery import group, chain
+
+# Parallel research collectors
+research_tasks = group(
+    collect_scholar.s(artist_name),
+    collect_midi.s(artist_name),
+    collect_text.s(artist_name),
+    collect_audio.s(artist_name),
+)
+
+# Chain: research → generate → export
+pipeline = chain(
+    research_tasks,
+    synthesize_profile.s(),
+    generate_pattern.s(params),
+    export_midi.s()
+)
+
+result = pipeline.apply_async()
 ```
 
 ## Security Best Practices
@@ -396,10 +497,59 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 4. **Don't hardcode paths**: Use `Path` from pathlib and environment variables
 5. **Don't skip validation**: Use Pydantic models for all API inputs
 
+## Git Workflow (BMAD-METHOD)
+
+### Conventional Commits (REQUIRED)
+```bash
+# Format: <type>(<scope>): <subject>
+feat(llm): add Anthropic Claude provider with fallback
+fix(research): resolve timeout in audio collector
+docs(api): update endpoint documentation
+test(midi): add humanization unit tests
+```
+
+### Branching Strategy
+```
+main (production)
+  └── dev (integration)
+       ├── feature/research-pipeline
+       ├── feature/llm-providers
+       └── feature/max-for-live
+```
+
+### Quick Commit (Use Frequently!)
+```bash
+# Windows
+.\scripts\commit.ps1
+
+# macOS/Linux
+./scripts/commit.sh
+
+# Commit every 1-2 hours of work
+# Push after each commit
+```
+
+See `docs/GIT_WORKFLOW.md` for complete workflow guide.
+
+## Context Documents (Always Reference)
+
+- `.cursorcontext/01_project_overview.md` - v2.0 overview
+- `.cursorcontext/02_architecture.md` - Orchestrator-Agent design
+- `.cursorcontext/03_dependencies.md` - ALL dependencies (verified 2025-11-17)
+- `.cursorcontext/04_midi_operations.md` - MIDI processing
+- `.cursorcontext/05_generation_pipeline.md` - LLM generation flow
+- `docs/ORCHESTRATOR_META_PROMPT.md` - System blueprint
+- `docs/PRD.md` - Product requirements
+- `docs/ARCHITECTURE.md` - Technical architecture
+
 ## Remember
 
-- Check `.cursorcontext/` directory for detailed context documents
-- Refer to `docs/` for comprehensive guides
+- This is v2.0: NO training, ONLY LLM generation
+- Use async/await for all I/O operations
+- Implement proper error handling with fallbacks
+- Cache aggressively (Redis + database)
 - Run `pytest` before committing
 - Use `ruff check` for linting
-- Follow the architecture defined in `.cursorcontext/02_architecture.md`
+- Follow conventional commit format
+- Push frequently (every 1-2 hours)
+- Reference `docs/` for comprehensive guides

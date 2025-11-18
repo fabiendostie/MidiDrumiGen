@@ -1,261 +1,304 @@
-# Project Overview - Context Document
+# Project Overview - MidiDrumiGen v2.0
 
-**Document Type:** Instructional Context  
-**Purpose:** High-level project understanding, goals, and constraints  
-**Use Case:** Load this when starting new features or explaining the project
+**Version:** 2.0.0  
+**Last Updated:** 2025-11-17  
+**Architecture:** On-Demand Research + LLM Generation
 
 ---
 
-## What This Project Does
+## What is MidiDrumiGen?
 
-This is an **AI-powered MIDI drum pattern generator** that:
+MidiDrumiGen is an intelligent MIDI drum pattern generation plugin for Ableton Live that allows users to input **ANY** artist or band name and receive authentic drum patterns in that artist's style.
 
-1. **Learns producer-specific drumming styles** from MIDI datasets
-2. **Generates new drum patterns** matching requested styles
-3. **Exports patterns as MIDI files** compatible with any DAW
-4. **Integrates with Ableton Live 12** for real-time pattern insertion
+**Key Innovation:** On-demand multi-source research eliminates the need for pre-trained models, enabling unlimited artist support.
 
-### Key Differentiation
+---
 
-Unlike generic music generation models, this focuses on:
-- **Symbolic MIDI generation** (not audio)
-- **Drum-specific patterns** with proper GM mapping
-- **Style emulation** of specific producers (J Dilla, Metro Boomin, etc.)
-- **Musically coherent loops** (1-32 bars)
-- **Humanization** (timing offsets, velocity variation, ghost notes)
+## Core Capabilities
+
+### 1. On-Demand Artist Research
+- **Automated Data Collection:**
+  - Academic papers (Semantic Scholar, arXiv)
+  - Music journalism (Pitchfork, Rolling Stone, Drummerworld)
+  - Audio analysis (YouTube, tempo/rhythm extraction)
+  - MIDI databases (BitMIDI, FreeMIDI)
+
+### 2. Multi-Provider LLM Generation
+- **Primary Providers:**
+  - OpenAI GPT-4-turbo
+  - Anthropic Claude 3 Opus/Sonnet
+  - Google Gemini 1.5 Pro
+- **Automatic Failover:** If one provider fails, system tries next
+- **Cost Tracking:** Monitor API usage per provider
+
+### 3. Style Profile Database
+- **PostgreSQL with pgvector:** Vector similarity search for "artists like X"
+- **Caching System:** First-time research takes 5-20 min, cached artists < 2 min
+- **Augmentation:** Add more sources to improve quality
+
+### 4. Ableton Live Integration
+- **Max for Live Device:** Direct integration into Ableton workflow
+- **Automatic Clip Creation:** Generated patterns appear in clip slots
+- **User-Friendly UI:** Artist input, parameters, progress tracking
+
+---
+
+## System Architecture (High-Level)
+
+```
+User (Ableton Live)
+       ↓
+Max for Live Device
+       ↓
+FastAPI REST API
+       ↓
+┌──────────────┼──────────────┐
+│              │              │
+Orchestrator   │              │
+│              │              │
+├──────────────┼──────────────┤
+│              │              │
+Research ←────┘   Generation  │
+(if not cached)   (always)    │
+│                             │
+- Papers Collector            - LLM Provider Manager
+- Articles Collector            (OpenAI/Claude/Gemini)
+- Audio Analyzer              - Template Generator
+- MIDI Collector              - Hybrid Coordinator
+│                             │
+└─→ StyleProfile ─────────────┘
+            ↓
+    MIDI Export & Humanization
+            ↓
+    Ableton Clip Import
+```
+
+---
+
+## Technology Stack
+
+### Backend (Python 3.11+)
+- **Web Framework:** FastAPI 0.109.2
+- **Task Queue:** Celery 5.3.6 + Redis 7.0+
+- **Database:** PostgreSQL 15+ with pgvector 0.2.4
+- **LLM APIs:** OpenAI 1.12.0, Anthropic 0.18.1, Google GenAI 0.3.2
+
+### Research & Analysis
+- **Web Scraping:** BeautifulSoup4 4.12.3, Scrapy 2.11.1
+- **Audio Analysis:** Librosa 0.10.1, Essentia 2.1b6
+- **NLP:** spaCy 3.7.4, sentence-transformers 2.3.1
+
+### MIDI Processing
+- **MIDI I/O:** mido 1.3.2
+- **Validation:** Custom validation pipeline
+
+### Frontend
+- **Max for Live:** Max 8.5+ (Ableton Live 11+)
+- **JavaScript Bridge:** HTTP client for API communication
+
+---
+
+## Project Structure
+
+```
+MidiDrumiGen/
+├── src/
+│   ├── orchestrator/           # NEW: Main coordinator
+│   ├── research/
+│   │   ├── orchestrator.py     # NEW: Research coordinator
+│   │   ├── collectors/         # NEW: 4 data collectors
+│   │   │   ├── papers.py
+│   │   │   ├── articles.py
+│   │   │   ├── audio.py
+│   │   │   └── midi_db.py
+│   │   ├── profile_builder.py  # NEW: StyleProfile builder
+│   │   ├── producer_agent.py   # KEEP: Original research
+│   │   └── llm_synthesizer.py  # KEEP: LLM synthesis
+│   ├── generation/             # NEW: LLM-based generation
+│   │   ├── providers/
+│   │   │   ├── openai.py
+│   │   │   ├── anthropic.py
+│   │   │   ├── google.py
+│   │   │   └── manager.py
+│   │   ├── prompt_builder.py
+│   │   ├── template_generator.py
+│   │   └── hybrid_coordinator.py
+│   ├── database/               # NEW: Database layer
+│   │   ├── models.py
+│   │   └── manager.py
+│   ├── midi/                   # KEEP: MIDI operations
+│   │   ├── export.py
+│   │   ├── humanize.py
+│   │   ├── validate.py
+│   │   └── style_transfer.py
+│   ├── api/                    # UPDATE: New endpoints
+│   │   ├── main.py
+│   │   └── routes/
+│   │       ├── research.py     # NEW
+│   │       ├── generate.py     # UPDATE
+│   │       └── utils.py        # NEW
+│   ├── tasks/                  # UPDATE: Celery tasks
+│   │   └── tasks.py
+│   └── ableton/                # NEW: Max for Live
+│       ├── MidiDrumGen.amxd
+│       └── js/bridge.js
+├── data/
+│   └── producer_cache/         # KEEP: Cached research (will migrate to DB)
+├── configs/
+│   └── generation.yaml         # NEW: LLM & research config
+├── tests/
+│   ├── unit/
+│   └── integration/
+├── docs/
+│   ├── PRD.md
+│   ├── ARCHITECTURE.md
+│   ├── UI.md
+│   ├── ORCHESTRATOR_META_PROMPT.md
+│   ├── DOCUMENTATION_INDEX.md
+│   └── agents/                 # Sub-agent specs
+└── docs/_old/                  # Archived training code
+    └── archived/
+        ├── src_training/       # Old PyTorch training
+        ├── models/             # Old checkpoints
+        ├── groove_midi/        # Old training data
+        └── tokenized/          # Old tokenized data
+```
+
+---
+
+## Key Differences from v1.x
+
+### ❌ REMOVED (Training Approach)
+- PyTorch model training (`src/training/`)
+- Pre-trained model checkpoints (`models/`)
+- MidiTok tokenization (`scripts/tokenize_*.py`)
+- Groove MIDI Dataset (`data/groove_midi/`)
+- MockDrumModel (`src/inference/mock.py`)
+- Model loader (`src/inference/model_loader.py`)
+
+### ✅ NEW (On-Demand Approach)
+- Multi-source research pipeline (papers, articles, audio, MIDI)
+- LLM-based generation (OpenAI, Claude, Gemini)
+- PostgreSQL database with vector search
+- Style profile caching and augmentation
+- Max for Live device
+- Research orchestration
+- Hybrid generation (LLM + templates)
+
+### 🔄 UPDATED (Enhanced)
+- `src/research/` - Expanded with 4 collectors + orchestrator
+- `src/api/` - New endpoints for research and generation
+- `src/tasks/` - Async tasks for research and generation
+- `src/midi/` - Enhanced MIDI export with LLM output support
+
+---
 
 ## User Workflow
 
-```
-User Request → API Endpoint → Celery Task Queue → ML Model → MIDI File → Ableton
-```
+### First-Time Artist (15-20 minutes)
+1. User types artist name in Max for Live device
+2. System checks database (cache miss)
+3. Research pipeline activates:
+   - Papers collector searches academic databases
+   - Articles collector scrapes music journalism
+   - Audio analyzer extracts rhythm from YouTube
+   - MIDI collector finds existing patterns
+4. Style Profile Builder aggregates data
+5. Profile stored in database
+6. LLM generates patterns using profile
+7. MIDI clips appear in Ableton
 
-**Example User Interaction:**
-```json
-POST /api/v1/generate
-{
-  "producer_style": "J Dilla",
-  "bars": 4,
-  "time_signature": [4, 4],
-  "tempo": 95,
-  "humanize": true,
-  "pattern_type": "intro"
-}
+### Cached Artist (< 2 minutes)
+1. User types artist name
+2. System loads StyleProfile from database
+3. LLM generates patterns immediately
+4. MIDI clips appear in Ableton
 
-Response:
-{
-  "task_id": "abc-123",
-  "status": "queued"
-}
-```
+### Augmentation (5 minutes)
+1. User clicks "Augment Research"
+2. System collects additional sources
+3. Profile updated with new data
+4. Confidence score improves
+5. Better generation quality
 
-## Core Features
+---
 
-### Phase 1 (MVP - Current)
-✅ Custom PyTorch Transformer model  
-✅ MidiTok tokenization pipeline  
-✅ Groove MIDI Dataset training  
-✅ Producer style classification  
-✅ Basic pattern generation  
-✅ MIDI file export  
-✅ REST API with FastAPI  
-✅ Async task processing with Celery
+## Performance Targets
 
-### Phase 2 (In Development)
-🚧 Latent space interpolation  
-🚧 Advanced humanization algorithms  
-🚧 Real-time Ableton integration  
-🚧 Web UI for pattern preview  
-🚧 Style transfer between producers
+- **Research Time:** < 20 min (first-time)
+- **Generation Time:** < 2 min (cached)
+- **Database Queries:** < 100ms
+- **LLM API Calls:** < 30s
+- **Confidence Score:** > 0.6 (usable), > 0.8 (excellent)
 
-### Phase 3 (Planned)
-📋 Multi-track generation (drums + bass)  
-📋 VST/AU plugin wrapper  
-📋 Real-time parameter adjustment  
-📋 Custom style training from user MIDI
+---
 
-## Technical Constraints
+## Development Status
 
-### Hard Requirements
-- Python 3.11 (strict version)
-- NVIDIA GPU with 8GB+ VRAM minimum
-- CUDA 12.1+ compatible drivers
-- Redis server for task queue
-- 16GB+ system RAM
+### Phase 1: Documentation ✅ COMPLETE
+- PRD created
+- Architecture designed
+- UI specified
+- Agent specs documented
 
-### Performance Targets
-- Pattern generation: < 2 seconds on RTX 3060
-- API response time: < 100ms
-- Concurrent requests: 10+ simultaneous generations
-- Model size: < 500MB for production deployment
+### Phase 2: Infrastructure (IN PROGRESS)
+- PostgreSQL + pgvector setup
+- Database schema creation
+- Environment configuration
+- Archive old training code
 
-## Non-Goals (What We Don't Do)
+### Phase 3-7: Implementation (PLANNED)
+- Research pipeline (Week 2-3)
+- Generation engine (Week 3-4)
+- MIDI export (Week 4)
+- Ableton integration (Week 5)
+- Testing (Week 6)
 
-❌ **Audio synthesis** - We generate MIDI, not audio waveforms  
-❌ **Melody generation** - Drums only (may expand to bass later)  
-❌ **Real-time audio streaming** - Focus on MIDI file export  
-❌ **Mobile deployment** - Desktop/server deployment only  
-❌ **Legacy DAW support** - Ableton Live 12 is minimum version
+---
 
-## Technology Stack Justification
+## Quick Links
 
-### Why PyTorch Instead of TensorFlow?
-- Modern ecosystem (Transformers, Lightning, etc.)
-- No dependency hell with CUDA versions
-- Better Python integration and debugging
-- Active community and development
+- **Complete Architecture:** `docs/ARCHITECTURE.md`
+- **Product Requirements:** `docs/PRD.md`
+- **UI Specification:** `docs/UI.md`
+- **Implementation Guide:** `docs/ORCHESTRATOR_META_PROMPT.md`
+- **Sub-Agent Specs:** `docs/agents/`
 
-### Why Custom Model Instead of Pretrained?
-- No pretrained models exist for symbolic drum generation
-- Full control over drum-specific features
-- Smaller model size (500MB vs 5GB+)
-- Faster inference for real-time use cases
+---
 
-### Why FastAPI + Celery?
-- FastAPI: Modern async Python, auto-generated docs
-- Celery: Industry-standard for background tasks
-- Redis: Fast, reliable message broker
-- Proven stack used by Uber, Netflix, Instagram
+## Getting Started (Development)
 
-### Why mido Instead of pretty-midi?
-- pretty-midi abandoned since 2020
-- mido actively maintained with Python 3.12 support
-- Simpler API for drum patterns
-- Better error handling and edge cases
-
-## Data Sources
-
-### Primary Training Data
-**Groove MIDI Dataset** (Google Magenta, 2019)
-- 1,150+ MIDI drum patterns
-- Professional studio recordings
-- Tempo, time signature, style labels
-- Multiple takes per groove
-- License: Apache 2.0
-
-### Secondary Data (Web-Scraped)
-- Producer interview transcripts
-- Production technique articles
-- MIDI files from artist packs
-- Forum discussions about specific styles
-
-### Style Metadata
-- BPM range per producer
-- Preferred time signatures
-- Characteristic drum sounds
-- Common pattern structures
-- Swing percentage
-
-## Model Architecture Overview
-
-```
-Input: Producer Style + Parameters
-  ↓
-Tokenizer (MidiTok REMI)
-  ↓
-Transformer Encoder (12 layers)
-  ↓
-Style Conditioning (learned embeddings)
-  ↓
-Transformer Decoder (12 layers)
-  ↓
-Token Sampling (top-k, temperature)
-  ↓
-Detokenizer (MIDI reconstruction)
-  ↓
-Post-processing (humanization, validation)
-  ↓
-Output: MIDI File
-```
-
-## Key Concepts
-
-### Tokenization
-Converting MIDI to discrete tokens that a Transformer can process:
-- Note events → Note tokens
-- Timing → Bar/Position tokens
-- Velocity → Velocity tokens
-- Tempo → Tempo tokens
-
-### Style Conditioning
-Adding producer identity to model input:
-- Learned style embeddings (128-dim)
-- Concatenated with positional encoding
-- Allows model to generate in specific style
-
-### Humanization
-Making patterns feel less "robotic":
-- **Timing offsets**: ±15ms random variation
-- **Velocity variation**: ±10% per note
-- **Ghost notes**: Soft hits (20-40 velocity)
-- **Swing**: Delayed offbeat notes
-
-### Pattern Validation
-Ensuring musical quality:
-- Valid MIDI note ranges (35-81 for GM drums)
-- Reasonable note density (not too sparse/dense)
-- Proper timing quantization
-- No simultaneous impossible hits
-
-## Development Principles
-
-1. **No Legacy Dependencies**: Zero TensorFlow, Zero Magenta
-2. **Type Everything**: Full type hints for all functions
-3. **Test Everything**: Unit tests for all core functions
-4. **Document Everything**: Docstrings for all public APIs
-5. **Modern Python**: Use Python 3.11 features liberally
-6. **GPU First**: Optimize for GPU execution
-7. **Async Where Possible**: Non-blocking I/O operations
-8. **Fail Fast**: Validate inputs early, raise clear errors
-
-## Project Status (November 2025)
-
-**Current Phase:** MVP Development  
-**Milestone:** Phase 1 completion by Q1 2026  
-**Team Size:** Solo developer + AI assistants  
-**Code Quality:** Targeting 80%+ test coverage  
-**Documentation:** Comprehensive context engineering docs
-
-## Success Metrics
-
-### Technical Metrics
-- Model validation loss < 0.5
-- Generation time < 2 seconds
-- MIDI file validity rate > 99%
-- API uptime > 99.5%
-
-### User Experience Metrics
-- Pattern quality subjective rating > 4/5
-- Style recognition accuracy > 80%
-- User retention week-over-week > 60%
-- Time to first generation < 30 seconds
-
-## Related Documents
-
-- **Architecture Details**: `.cursorcontext/02_architecture.md`
-- **Dependencies**: `.cursorcontext/03_dependencies.md`
-- **MIDI Operations**: `.cursorcontext/04_midi_operations.md`
-- **ML Pipeline**: `.cursorcontext/05_ml_pipeline.md`
-- **Common Tasks**: `.cursorcontext/06_common_tasks.md`
-
-## Quick Reference Commands
-
+### Setup
 ```bash
-# Start development environment
-docker-compose up -d
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
 
-# Run tests
-pytest tests/ -v --cov
+# Install dependencies (will be updated)
+pip install -r requirements.txt
 
-# Start API server
-uvicorn src.api.main:app --reload
+# Setup PostgreSQL
+# (Instructions in ARCHITECTURE.md)
 
-# Start Celery worker
-celery -A src.tasks.worker worker --loglevel=info
-
-# Train model
-python src/training/train_transformer.py --config configs/base.yaml
-
-# Generate test pattern
-python scripts/generate_pattern.py --style "J Dilla" --bars 4
+# Configure environment
+cp .env.example .env
+# Edit .env with API keys
 ```
+
+### Run API Server
+```bash
+uvicorn src.api.main:app --reload --port 8000
+```
+
+### Run Celery Worker
+```bash
+celery -A src.tasks.worker worker --loglevel=info
+```
+
+### Run Tests
+```bash
+pytest tests/
+```
+
+---
+
+**This is the definitive overview for v2.0 architecture. Refer to specific docs for implementation details.**
