@@ -1,9 +1,11 @@
-"""Inference module for model loading and pattern generation."""
+"""Inference module for pattern generation.
 
-from .model_loader import load_model
+Note: model_loader.py and mock.py have been archived in v2.0 migration.
+v2.0 uses LLM-based generation instead of PyTorch models.
+"""
+
 from .generate import generate_pattern
 
 __all__ = [
-    'load_model',
-    'generate_pattern',
+    "generate_pattern",
 ]
