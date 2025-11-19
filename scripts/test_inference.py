@@ -8,41 +8,58 @@ This script tests:
 5. Mock model generation
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 import torch
 
-# Import inference modules
-from src.inference.model_loader import (
-    detect_device,
-    get_gpu_memory_info,
-    clear_gpu_cache,
-    load_model,
-    ModelLoadError,
-)
-from src.models.styles import (
-    list_available_styles,
-    get_style_id,
-    get_style_params,
-    get_humanization_params,
-    get_model_path,
-    get_preferred_tempo_range,
-    validate_tempo_for_style,
-    get_style_description,
-    normalize_style_name,
-    StyleNotFoundError,
-)
-from src.inference.mock import (
-    MockDrumModel,
-    create_mock_checkpoint,
-    get_mock_tokens,
-)
+try:
+    from src.inference.mock import MockDrumModel, create_mock_checkpoint, get_mock_tokens
+    from src.inference.model_loader import (
+        ModelLoadError,
+        clear_gpu_cache,
+        detect_device,
+        get_gpu_memory_info,
+        load_model,
+    )
+    from src.models.styles import (
+        StyleNotFoundError,
+        get_humanization_params,
+        get_model_path,
+        get_preferred_tempo_range,
+        get_style_id,
+        get_style_params,
+        list_available_styles,
+        normalize_style_name,
+        validate_tempo_for_style,
+    )
+except ModuleNotFoundError:
+    fallback_root = Path(__file__).parent.parent
+    fallback_root_str = str(fallback_root)
+    if fallback_root_str not in sys.path:
+        sys.path.insert(0, fallback_root_str)
+    from src.inference.mock import MockDrumModel, create_mock_checkpoint, get_mock_tokens
+    from src.inference.model_loader import (
+        ModelLoadError,
+        clear_gpu_cache,
+        detect_device,
+        get_gpu_memory_info,
+        load_model,
+    )
+    from src.models.styles import (
+        StyleNotFoundError,
+        get_humanization_params,
+        get_model_path,
+        get_preferred_tempo_range,
+        get_style_id,
+        get_style_params,
+        list_available_styles,
+        normalize_style_name,
+        validate_tempo_for_style,
+    )
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # Configure logging
 logging.basicConfig(
@@ -76,7 +93,7 @@ def test_device_detection():
         print(f"Detected device: {device}")
 
         if device == "cuda":
-            print(f"CUDA available: True")
+            print("CUDA available: True")
             print(f"CUDA version: {torch.version.cuda}")
             print(f"Device name: {torch.cuda.get_device_name(0)}")
             print(f"Device count: {torch.cuda.device_count()}")
@@ -84,12 +101,12 @@ def test_device_detection():
             # Test GPU memory info
             gpu_info = get_gpu_memory_info()
             if gpu_info:
-                print(f"GPU Memory Info:")
+                print("GPU Memory Info:")
                 print(f"  - Device: {gpu_info['device_name']}")
                 print(f"  - Allocated: {gpu_info['allocated_gb']:.2f}GB")
                 print(f"  - Reserved: {gpu_info['reserved_gb']:.2f}GB")
         else:
-            print(f"CUDA available: False")
+            print("CUDA available: False")
 
         print_result("Device detection", True, f"Device: {device}")
         return True
@@ -125,7 +142,7 @@ def test_style_registry():
 
                 # Get humanization params
                 humanization = get_humanization_params(style)
-                print(f"  - Humanization:")
+                print("  - Humanization:")
                 print(f"    - Swing: {humanization['swing']}")
                 print(f"    - Micro-timing: {humanization['micro_timing_ms']}ms")
                 print(f"    - Ghost note prob: {humanization['ghost_note_prob']}")
@@ -142,7 +159,7 @@ def test_style_registry():
                 all_passed = False
 
         # Test style name normalization
-        print(f"\nTesting style name normalization:")
+        print("\nTesting style name normalization:")
         test_names = ["j dilla", "J Dilla", "jdilla", "metro", "questlove"]
         for test_name in test_names:
             try:
@@ -212,7 +229,7 @@ def test_missing_model_handling():
             return False
 
         except ModelLoadError as e:
-            print(f"Correctly raised ModelLoadError:")
+            print("Correctly raised ModelLoadError:")
             print(f"  {str(e)}")
             print_result("Missing model error", True, "Error handled correctly")
             return True
@@ -274,7 +291,7 @@ def test_mock_model():
 
         # Test mock checkpoint creation
         print("\nTesting mock checkpoint creation...")
-        checkpoint_path = project_root / "output" / "test_mock_checkpoint.pt"
+        checkpoint_path = PROJECT_ROOT / "output" / "test_mock_checkpoint.pt"
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
         create_mock_checkpoint(str(checkpoint_path), vocab_size=500, n_styles=50)
@@ -287,7 +304,7 @@ def test_mock_model():
             print("Attempting to load mock checkpoint...")
             try:
                 checkpoint = torch.load(checkpoint_path)
-                print(f"Checkpoint loaded successfully")
+                print("Checkpoint loaded successfully")
                 print(f"Metadata: {checkpoint['metadata']}")
                 print_result("Mock checkpoint", True, "Created and loaded successfully")
             except Exception as e:

@@ -2,14 +2,15 @@
 
 import pytest
 from pydantic import ValidationError
+
 from src.api.models import (
+    ErrorResponse,
     PatternGenerationRequest,
     ProducerStyle,
-    TaskResponse,
-    TaskStatusResponse,
     StyleInfo,
     StylesListResponse,
-    ErrorResponse,
+    TaskResponse,
+    TaskStatusResponse,
 )
 
 

@@ -1,11 +1,12 @@
 """Pattern generation API routes."""
 
 import logging
+
 from fastapi import APIRouter, HTTPException, status
+
 from src.api.models import PatternGenerationRequest, TaskResponse
-from src.tasks.tasks import generate_pattern_task
-from src.models.styles import validate_tempo_for_style, StyleNotFoundError
 from src.research.producer_agent import ProducerResearchAgent
+from src.tasks.tasks import generate_pattern_task
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Either 'producer_name' or 'producer_style' must be provided"
-            )
+            ) from e
 
         logger.info(
             f"Pattern generation request: {producer_name}, "
@@ -111,7 +112,7 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to research producer '{producer_name}': {str(e)}"
-            )
+            ) from e
 
         # Validate tempo suggestion (warning only)
         tempo_range = style_profile.get('style_params', {}).get('tempo_range', [60, 200])
@@ -153,4 +154,4 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to queue generation task: {str(e)}"
-        )
+        ) from e

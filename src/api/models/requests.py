@@ -1,8 +1,8 @@
 """Pydantic request models for API validation."""
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Tuple, Optional
 from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProducerStyle(str, Enum):
@@ -15,11 +15,11 @@ class ProducerStyle(str, Enum):
 class PatternGenerationRequest(BaseModel):
     """Request model for pattern generation with dynamic producer names."""
 
-    producer_name: Optional[str] = Field(
+    producer_name: str | None = Field(
         None,
         description="Producer name (any name, e.g., 'Timbaland', 'Aphex Twin', 'J Dilla')"
     )
-    producer_style: Optional[ProducerStyle] = Field(
+    producer_style: ProducerStyle | None = Field(
         None,
         description="Producer style (legacy enum - use producer_name instead)"
     )
@@ -35,7 +35,7 @@ class PatternGenerationRequest(BaseModel):
         le=200,
         description="Tempo in BPM (60-200)"
     )
-    time_signature: Tuple[int, int] = Field(
+    time_signature: tuple[int, int] = Field(
         default=(4, 4),
         description="Time signature as (numerator, denominator)"
     )
@@ -43,7 +43,7 @@ class PatternGenerationRequest(BaseModel):
         default=True,
         description="Apply humanization (timing, velocity, ghost notes)"
     )
-    pattern_type: Optional[str] = Field(
+    pattern_type: str | None = Field(
         default="verse",
         description="Pattern type (intro, verse, chorus, bridge, outro)"
     )

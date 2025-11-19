@@ -1,10 +1,11 @@
 """Pytest configuration and shared fixtures."""
 
+import shutil
+import tempfile
+from pathlib import Path
+
 import pytest
 import torch
-from pathlib import Path
-import tempfile
-import shutil
 
 
 @pytest.fixture

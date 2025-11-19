@@ -1,9 +1,8 @@
 """Pattern validation for drum patterns."""
 
-from typing import List, Dict, Tuple
 import logging
 
-from .constants import MIN_DRUM_NOTE, MAX_DRUM_NOTE, DEFAULT_TICKS_PER_BEAT
+from .constants import DEFAULT_TICKS_PER_BEAT, MAX_DRUM_NOTE, MIN_DRUM_NOTE
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +14,16 @@ EXCLUSIVE_PAIRS = [
     (44, 46),  # Pedal Hi-Hat + Open Hi-Hat (same instrument)
 ]
 
+MIN_PATTERN_DENSITY = 0.5  # At least 0.5 notes per beat
+MAX_PATTERN_DENSITY = 16   # Max 16 notes per beat (64th notes)
+MAX_SIMULTANEOUS_HITS = 4  # Human has 4 limbs
+
 
 def validate_drum_pattern(
-    notes: List[Dict],
+    notes: list[dict],
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
     allow_empty: bool = False
-) -> Tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """
     Validate drum pattern for musical correctness and physical constraints.
 
@@ -104,22 +107,19 @@ def validate_drum_pattern(
             density = len(notes) / duration_in_beats
 
             # Reasonable density limits
-            MIN_DENSITY = 0.5  # At least 0.5 notes per beat
-            MAX_DENSITY = 16   # Max 16 notes per beat (64th notes)
-
-            if density < MIN_DENSITY:
+            if density < MIN_PATTERN_DENSITY:
                 errors.append(
                     f"Pattern too sparse ({density:.2f} notes/beat, "
-                    f"minimum {MIN_DENSITY})"
+                    f"minimum {MIN_PATTERN_DENSITY})"
                 )
-            elif density > MAX_DENSITY:
+            elif density > MAX_PATTERN_DENSITY:
                 errors.append(
                     f"Pattern too dense ({density:.2f} notes/beat, "
-                    f"maximum {MAX_DENSITY})"
+                    f"maximum {MAX_PATTERN_DENSITY})"
                 )
 
     # 5. Group notes by time for simultaneous hit checking
-    time_groups: Dict[int, List[int]] = {}
+    time_groups: dict[int, list[int]] = {}
     for note in notes:
         time = note['time']
         pitch = note['pitch']
@@ -136,12 +136,11 @@ def validate_drum_pattern(
                 )
 
     # 7. Check maximum simultaneous hits (realistic limit)
-    MAX_SIMULTANEOUS = 4  # Human has 4 limbs
     for time, pitches in time_groups.items():
-        if len(pitches) > MAX_SIMULTANEOUS:
+        if len(pitches) > MAX_SIMULTANEOUS_HITS:
             errors.append(
                 f"Too many simultaneous hits at time {time}: "
-                f"{len(pitches)} notes (maximum {MAX_SIMULTANEOUS})"
+                f"{len(pitches)} notes (maximum {MAX_SIMULTANEOUS_HITS})"
             )
 
     # 8. Check for duplicate notes at same time (same pitch multiple times)
@@ -163,7 +162,7 @@ def validate_drum_pattern(
     return is_valid, errors
 
 
-def validate_pattern_structure(notes: List[Dict]) -> Tuple[bool, List[str]]:
+def validate_pattern_structure(notes: list[dict]) -> tuple[bool, list[str]]:
     """
     Validate that note dictionaries have required structure.
 
@@ -195,7 +194,7 @@ def validate_pattern_structure(notes: List[Dict]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def get_pattern_statistics(notes: List[Dict], ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT) -> Dict:
+def get_pattern_statistics(notes: list[dict], ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT) -> dict:
     """
     Calculate pattern statistics for debugging/analysis.
 

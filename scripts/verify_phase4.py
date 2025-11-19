@@ -1,9 +1,9 @@
 """Quick verification script for Phase 4."""
 
-import requests
-import json
-import time
 import sys
+import time
+
+import requests
 
 # Fix Unicode output on Windows
 if sys.platform == 'win32':
@@ -90,11 +90,11 @@ try:
 
         # Check status
         print("   Checking task status...")
-        for i in range(10):
+        for _ in range(10):
             time.sleep(1)
             status = requests.get(f"{API_BASE}/api/v1/status/{task_id}").json()
             if status['status'] == 'completed':
-                print(f"✅ Task completed!")
+                print("✅ Task completed!")
                 print(f"   MIDI file: {status['result']['midi_file']}")
                 break
             elif status['status'] == 'failed':

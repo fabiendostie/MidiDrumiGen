@@ -1,7 +1,7 @@
 """Pydantic response models for API responses."""
 
+
 from pydantic import BaseModel, Field
-from typing import Optional, List, Tuple
 
 
 class TaskResponse(BaseModel):
@@ -26,11 +26,11 @@ class TaskStatusResponse(BaseModel):
 
     task_id: str
     status: str
-    progress: Optional[int] = Field(None, ge=0, le=100, description="Progress percentage")
-    result: Optional[dict] = Field(None, description="Task result (if completed)")
-    error: Optional[str] = Field(None, description="Error message (if failed)")
-    created_at: Optional[str] = Field(None, description="Task creation timestamp")
-    completed_at: Optional[str] = Field(None, description="Task completion timestamp")
+    progress: int | None = Field(None, ge=0, le=100, description="Progress percentage")
+    result: dict | None = Field(None, description="Task result (if completed)")
+    error: str | None = Field(None, description="Error message (if failed)")
+    created_at: str | None = Field(None, description="Task creation timestamp")
+    completed_at: str | None = Field(None, description="Task completion timestamp")
 
     class Config:
         json_schema_extra = {
@@ -56,7 +56,7 @@ class StyleInfo(BaseModel):
     name: str
     model_id: str
     description: str
-    preferred_tempo_range: Tuple[int, int]
+    preferred_tempo_range: tuple[int, int]
     humanization: dict
 
     class Config:
@@ -79,7 +79,7 @@ class StyleInfo(BaseModel):
 class StylesListResponse(BaseModel):
     """Response model for styles list."""
 
-    styles: List[StyleInfo]
+    styles: list[StyleInfo]
     count: int
 
     class Config:
@@ -104,5 +104,5 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[dict] = Field(None, description="Additional error details")
-    path: Optional[str] = Field(None, description="Request path")
+    details: dict | None = Field(None, description="Additional error details")
+    path: str | None = Field(None, description="Request path")

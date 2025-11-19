@@ -8,11 +8,12 @@ These tests require:
 Run with: pytest tests/integration/test_api_integration.py -v -s
 """
 
-import pytest
-import requests
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
+import pytest
+import requests
 
 # Base URL for API
 API_BASE = "http://localhost:8000"
@@ -101,7 +102,7 @@ class TestStylesEndpoint:
 class TestPatternGenerationWorkflow:
     """Test complete pattern generation workflow end-to-end."""
 
-    def _poll_task_status(self, task_id: str, timeout: int = TASK_TIMEOUT) -> Dict[str, Any]:
+    def _poll_task_status(self, task_id: str, timeout: int = TASK_TIMEOUT) -> dict[str, Any]:
         """Poll task status until completion or timeout.
 
         Args:
@@ -447,7 +448,7 @@ class TestConcurrentGeneration:
         tasks = []
 
         # Submit 3 tasks
-        for i in range(3):
+        for _ in range(3):
             request_data = {
                 "producer_style": "J Dilla",
                 "bars": 1,

@@ -1,8 +1,8 @@
 """Unit tests for mock model."""
 
+
 import pytest
 import torch
-from pathlib import Path
 
 from src.inference.mock import (
     MockDrumModel,

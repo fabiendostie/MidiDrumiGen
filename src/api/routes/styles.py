@@ -1,8 +1,10 @@
 """Producer styles API routes."""
 
 import logging
+
 from fastapi import APIRouter, HTTPException, status
-from src.api.models import StylesListResponse, StyleInfo
+
+from src.api.models import StyleInfo, StylesListResponse
 from src.models.styles import get_all_styles_info
 
 logger = logging.getLogger(__name__)
@@ -77,4 +79,4 @@ async def list_styles() -> StylesListResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve styles: {str(e)}"
-        )
+        ) from e

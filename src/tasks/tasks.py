@@ -1,11 +1,13 @@
 """Celery task definitions."""
 
-from celery import Task
-from src.tasks.worker import celery_app
 import logging
 from pathlib import Path
-from datetime import datetime
 import time
+
+from celery import Task
+import torch
+
+from src.tasks.worker import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,7 @@ def generate_pattern_task(
 
         # Determine producer name and style profile
         use_dynamic_style = style_profile is not None
-        
+
         if use_dynamic_style:
             # Week 2: Dynamic producer with researched style
             actual_producer_name = producer_name or style_profile.get('producer_name', 'Unknown')
@@ -110,11 +112,11 @@ def generate_pattern_task(
         # For legacy mode or fallback, normalize style name
         if not use_dynamic_style or not style_profile:
             from src.models.styles import (
-                normalize_style_name,
-                get_numeric_style_id,
+                StyleNotFoundError,
                 get_model_path,
+                get_numeric_style_id,
+                normalize_style_name,
                 validate_tempo_for_style,
-                StyleNotFoundError
             )
 
             try:
@@ -144,11 +146,10 @@ def generate_pattern_task(
 
         # Load model with GPU/CPU fallback
         from src.inference.model_loader import (
-            load_model,
-            detect_device,
             clear_gpu_cache,
+            detect_device,
             get_gpu_memory_info,
-            ModelLoadError
+            load_model,
         )
 
         try:
@@ -213,9 +214,7 @@ def generate_pattern_task(
         )
 
         # Generate pattern tokens
-        from src.inference.generate import generate_pattern, GenerationError
-
-        import torch
+        from src.inference.generate import generate_pattern
         try:
             # Calculate max tokens needed (rough estimate)
             tokens_per_bar = 64  # Approximate for 16th note resolution
@@ -497,14 +496,15 @@ def tokenize_midi(
             raise FileNotFoundError(f"MIDI file not found: {midi_path}")
 
         # Load MIDI file
-        from src.midi.io import read_midi_file
         import mido
+
+        from src.midi.io import read_midi_file
 
         try:
             mid = read_midi_file(midi_path)
             logger.debug(f"Loaded MIDI: {len(mid.tracks)} tracks, {mid.ticks_per_beat} ticks/beat")
         except Exception as e:
-            raise ValueError(f"Failed to load MIDI file: {e}")
+            raise ValueError(f"Failed to load MIDI file: {e}") from e
 
         # Extract metadata from MIDI
         self.update_state(
@@ -585,7 +585,6 @@ def tokenize_midi(
         token_path = output_dir / token_filename
 
         # Save tokens as PyTorch tensor
-        import torch
         torch.save(torch.tensor(tokens, dtype=torch.long), token_path)
 
         logger.debug(f"Saved tokens to {token_path}")

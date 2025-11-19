@@ -1,8 +1,10 @@
 """Task status API routes."""
 
 import logging
-from fastapi import APIRouter, HTTPException, status
+
 from celery.result import AsyncResult
+from fastapi import APIRouter, HTTPException, status
+
 from src.api.models import TaskStatusResponse
 from src.tasks.worker import celery_app
 
@@ -98,4 +100,4 @@ async def get_task_status(task_id: str) -> TaskStatusResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve task status: {str(e)}"
-        )
+        ) from e

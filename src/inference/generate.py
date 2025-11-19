@@ -1,13 +1,16 @@
 """Pattern generation inference using trained models."""
 
 import logging
-from typing import List, Optional, Any
+from typing import Any
 
 import torch
 
 from src.models.transformer import DrumPatternTransformer
 
 logger = logging.getLogger(__name__)
+
+BOS_TOKEN_ID = 1  # Beginning of sequence
+EOS_TOKEN_ID = 2  # End of sequence
 
 
 class GenerationError(Exception):
@@ -18,7 +21,7 @@ class GenerationError(Exception):
 def generate_pattern(
     model: DrumPatternTransformer,
     tokenizer: Any,
-    prompt_tokens: Optional[List[int]] = None,
+    prompt_tokens: list[int] | None = None,
     num_bars: int = 4,
     temperature: float = 1.0,
     top_k: int = 50,
@@ -26,7 +29,7 @@ def generate_pattern(
     max_length: int = 512,
     device: str = "cpu",
     style_id: int = 0,
-) -> List[int]:
+) -> list[int]:
     """
     Generate drum pattern tokens using the model.
 
@@ -76,10 +79,6 @@ def generate_pattern(
 
         # Set model to evaluation mode
         model.eval()
-
-        # Prepare starting tokens
-        BOS_TOKEN_ID = 1  # Beginning of sequence
-        EOS_TOKEN_ID = 2  # End of sequence
 
         if prompt_tokens is None:
             # Start with BOS token
@@ -159,15 +158,15 @@ def generate_pattern(
 
         return generated_tokens
 
-    except torch.cuda.OutOfMemoryError:
+    except torch.cuda.OutOfMemoryError as exc:
         logger.error("GPU out of memory during generation")
         raise GenerationError(
             "GPU out of memory. Try reducing max_length or using CPU device."
-        )
+        ) from exc
 
     except Exception as e:
         logger.error(f"Generation failed: {e}")
-        raise GenerationError(f"Pattern generation failed: {str(e)}")
+        raise GenerationError(f"Pattern generation failed: {str(e)}") from e
 
 
 def generate_batch(
@@ -180,8 +179,8 @@ def generate_batch(
     top_p: float = 0.9,
     max_length: int = 512,
     device: str = "cpu",
-    style_ids: Optional[List[int]] = None,
-) -> List[List[int]]:
+    style_ids: list[int] | None = None,
+) -> list[list[int]]:
     """
     Generate multiple patterns in parallel (batch generation).
 

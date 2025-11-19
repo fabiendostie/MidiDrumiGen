@@ -1,14 +1,15 @@
 """Unit tests for generate module."""
 
+from unittest.mock import MagicMock
+
 import pytest
 import torch
-from unittest.mock import MagicMock, patch
 
 from src.inference.generate import (
-    generate_pattern,
-    generate_batch,
-    estimate_generation_time,
     GenerationError,
+    estimate_generation_time,
+    generate_batch,
+    generate_pattern,
 )
 
 

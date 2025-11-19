@@ -1,11 +1,10 @@
 """Unit tests for API routes (Phase 4)."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from fastapi.testclient import TestClient
-from src.api.main import app
-from src.api.models import ProducerStyle
+from unittest.mock import Mock, patch
 
+from fastapi.testclient import TestClient
+
+from src.api.main import app
 
 client = TestClient(app)
 

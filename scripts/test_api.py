@@ -1,10 +1,11 @@
 """Test suite for Phase 4: API Routes."""
 
-import sys
-from pathlib import Path
-import requests
-import time
 import json
+import sys
+import time
+from pathlib import Path
+
+import requests
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -85,7 +86,7 @@ def test_generate_endpoint():
         print(f"  Attempt {i+1}: Status = {status_data['status']}")
 
         if status_data["status"] == "completed":
-            print(f"[PASS] Task completed")
+            print("[PASS] Task completed")
             print(f"  Result: {json.dumps(status_data['result'], indent=2)}")
             return status_data
 

@@ -2,8 +2,9 @@
 
 import logging
 import os
+
 from celery import Celery
-from celery.signals import worker_ready, worker_shutdown, task_prerun, task_postrun
+from celery.signals import task_postrun, task_prerun, worker_ready, worker_shutdown
 
 # Configure logging
 logging.basicConfig(
