@@ -1,11 +1,11 @@
 """Celery task definitions."""
 
 import logging
-from pathlib import Path
 import time
+from pathlib import Path
 
-from celery import Task
 import torch
+from celery import Task
 
 from src.tasks.worker import celery_app
 

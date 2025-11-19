@@ -1,15 +1,17 @@
 """FastAPI application main entry point."""
 
-from collections.abc import Callable
-from contextlib import asynccontextmanager
 import logging
 import time
+from collections.abc import Callable
+from contextlib import asynccontextmanager
 
+import redis
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import redis
-from src.api.routes import generate, status as status_routes, styles
+
+from src.api.routes import generate, styles
+from src.api.routes import status as status_routes
 
 # Configure logging
 logging.basicConfig(
