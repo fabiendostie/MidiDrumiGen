@@ -7,8 +7,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.midi.export import export_pattern
-from src.midi.validate import validate_drum_pattern, get_pattern_statistics
 from src.midi.humanize import apply_style_humanization
+from src.midi.validate import get_pattern_statistics, validate_drum_pattern
 
 
 def create_sample_pattern() -> list:
@@ -80,7 +80,7 @@ def test_validation():
 
     # Get statistics
     stats = get_pattern_statistics(notes)
-    print(f"\nPattern Statistics:")
+    print("\nPattern Statistics:")
     print(f"  Total notes: {stats['total_notes']}")
     print(f"  Unique pitches: {stats['unique_pitches']}")
     print(f"  Duration: {stats['duration_beats']:.1f} beats")
@@ -105,7 +105,7 @@ def test_humanization():
     for style in styles:
         humanized = apply_style_humanization(notes, style, tempo=95)
         print(f"\n{style} humanization: {len(humanized)} notes")
-        print(f"  (Ghost notes may have been added)")
+        print("  (Ghost notes may have been added)")
 
     print("\n[PASS] Humanization test PASSED")
     return True

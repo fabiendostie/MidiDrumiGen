@@ -240,18 +240,17 @@ class TestSimilarityAPIEndpoint:
         """Should return similar artists through API endpoint."""
         from src.api.routes.utils import get_similar_artists
 
-        with patch("src.api.routes.utils.get_database", return_value=db_manager):
-            with patch.object(
-                db_manager,
-                "find_similar_artists",
-                return_value=[("Keith Moon", 0.89), ("Ginger Baker", 0.85)],
-            ):
-                response = await get_similar_artists(artist="John Bonham", limit=2, db=db_manager)
+        with patch("src.api.routes.utils.get_database", return_value=db_manager), patch.object(
+            db_manager,
+            "find_similar_artists",
+            return_value=[("Keith Moon", 0.89), ("Ginger Baker", 0.85)],
+        ):
+            response = await get_similar_artists(artist="John Bonham", limit=2, db=db_manager)
 
-                assert response.artist == "John Bonham"
-                assert len(response.similar_artists) == 2
-                assert response.similar_artists[0]["name"] == "Keith Moon"
-                assert response.similar_artists[0]["similarity"] == 0.89
+            assert response.artist == "John Bonham"
+            assert len(response.similar_artists) == 2
+            assert response.similar_artists[0]["name"] == "Keith Moon"
+            assert response.similar_artists[0]["similarity"] == 0.89
 
     async def test_similarity_endpoint_not_found(self, db_manager):
         """Should raise 404 when artist not found."""

@@ -1,8 +1,7 @@
 """Humanization algorithms for drum patterns."""
 
-import random
-from typing import List, Dict, Optional
 import logging
+import random
 
 from .constants import DEFAULT_TICKS_PER_BEAT
 
@@ -118,11 +117,11 @@ def apply_velocity_variation(
 
 
 def apply_accent_pattern(
-    notes: List[Dict],
-    accent_positions: List[int],
+    notes: list[dict],
+    accent_positions: list[int],
     accent_boost: int = 20,
     accent_reduction: int = 5
-) -> List[Dict]:
+) -> list[dict]:
     """
     Apply accent pattern to emphasize specific beats.
 
@@ -163,12 +162,12 @@ def apply_accent_pattern(
 
 
 def add_ghost_notes(
-    notes: List[Dict],
+    notes: list[dict],
     probability: float = 0.3,
     ghost_velocity: int = 30,
     ghost_note: int = 38,  # Snare
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+) -> list[dict]:
     """
     Add subtle ghost notes between main hits.
 
@@ -284,11 +283,11 @@ PRODUCER_STYLES = {
 
 
 def apply_style_humanization(
-    notes: List[Dict],
+    notes: list[dict],
     style: str,
     tempo: int,
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+) -> list[dict]:
     """
     Apply producer-specific humanization to pattern.
 

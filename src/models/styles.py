@@ -2,13 +2,13 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # Producer style registry mapping style names to model IDs and parameters
-PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
+PRODUCER_STYLES: dict[str, dict[str, Any]] = {
     'J Dilla': {
         'style_id': 0,  # Numeric ID for model conditioning
         'model_id': 'j_dilla_v1',
@@ -65,7 +65,7 @@ PRODUCER_STYLES: Dict[str, Dict[str, Any]] = {
 
 
 # Style name aliases for case-insensitive lookup
-STYLE_ALIASES: Dict[str, str] = {
+STYLE_ALIASES: dict[str, str] = {
     'j dilla': 'J Dilla',
     'j_dilla': 'J Dilla',
     'jdilla': 'J Dilla',
@@ -117,7 +117,7 @@ def normalize_style_name(style_name: str) -> str:
         return STYLE_ALIASES[lower_name]
 
     # Try case-insensitive search in registry
-    for key in PRODUCER_STYLES.keys():
+    for key in PRODUCER_STYLES:
         if key.lower() == lower_name:
             return key
 
@@ -168,7 +168,7 @@ def get_numeric_style_id(style_name: str) -> int:
     return PRODUCER_STYLES[normalized_name]['style_id']
 
 
-def get_style_params(style_name: str) -> Dict[str, Any]:
+def get_style_params(style_name: str) -> dict[str, Any]:
     """
     Get all parameters for a producer style.
 
@@ -192,7 +192,7 @@ def get_style_params(style_name: str) -> Dict[str, Any]:
     return PRODUCER_STYLES[normalized_name]
 
 
-def get_humanization_params(style_name: str) -> Dict[str, Any]:
+def get_humanization_params(style_name: str) -> dict[str, Any]:
     """
     Get humanization parameters for a style.
 
@@ -216,7 +216,7 @@ def get_humanization_params(style_name: str) -> Dict[str, Any]:
 
 def get_model_path(
     style_name: str,
-    base_dir: Optional[Path] = None
+    base_dir: Path | None = None
 ) -> Path:
     """
     Resolve model checkpoint path for a style.
@@ -246,7 +246,7 @@ def get_model_path(
     return model_path.resolve()
 
 
-def list_available_styles() -> List[str]:
+def list_available_styles() -> list[str]:
     """
     Return list of all available producer styles.
 
@@ -261,7 +261,7 @@ def list_available_styles() -> List[str]:
     return list(PRODUCER_STYLES.keys())
 
 
-def get_preferred_tempo_range(style_name: str) -> Tuple[int, int]:
+def get_preferred_tempo_range(style_name: str) -> tuple[int, int]:
     """
     Get preferred tempo range for a style.
 
@@ -347,7 +347,7 @@ def get_style_description(style_name: str) -> str:
     return PRODUCER_STYLES[normalized_name]['description']
 
 
-def get_all_styles_info() -> Dict[str, Dict[str, Any]]:
+def get_all_styles_info() -> dict[str, dict[str, Any]]:
     """
     Get complete information about all available styles.
 

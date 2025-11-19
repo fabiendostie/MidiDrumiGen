@@ -1,17 +1,18 @@
 """Unit tests for model_loader module."""
 
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from src.inference.model_loader import (
-    detect_device,
-    load_model,
-    get_gpu_memory_info,
+    ModelLoadError,
     clear_gpu_cache,
     clear_model_cache,
-    ModelLoadError,
+    detect_device,
+    get_gpu_memory_info,
+    load_model,
 )
 
 
@@ -89,14 +90,14 @@ class TestModelLoading:
         clear_model_cache()
 
         # Mock the model class to avoid actual loading
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             mock_instance = MagicMock()
-            MockModel.return_value = mock_instance
+            mock_model.return_value = mock_instance
 
             model, metadata = load_model(mock_checkpoint_path, device=device)
 
             # Verify model was initialized
-            MockModel.assert_called_once()
+            mock_model.assert_called_once()
 
             # Verify metadata
             assert isinstance(metadata, dict)
@@ -112,9 +113,9 @@ class TestModelLoading:
         """Test that load_model uses LRU cache."""
         clear_model_cache()
 
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             mock_instance = MagicMock()
-            MockModel.return_value = mock_instance
+            mock_model.return_value = mock_instance
 
             # Load model first time
             model1, metadata1 = load_model(mock_checkpoint_path, device=device)
@@ -123,7 +124,7 @@ class TestModelLoading:
             model2, metadata2 = load_model(mock_checkpoint_path, device=device)
 
             # Should only initialize model once due to caching
-            assert MockModel.call_count == 1
+            assert mock_model.call_count == 1
 
             # Both calls should return same result
             assert model1 is model2
@@ -133,9 +134,9 @@ class TestModelLoading:
         """Test that load_model auto-detects device when not specified."""
         clear_model_cache()
 
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             mock_instance = MagicMock()
-            MockModel.return_value = mock_instance
+            mock_model.return_value = mock_instance
 
             # Don't specify device
             model, metadata = load_model(mock_checkpoint_path, device=None)
@@ -160,10 +161,10 @@ class TestModelLoading:
         """Test that GPU OOM triggers CPU fallback."""
         clear_model_cache()
 
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             # First call (CUDA) raises OOM, second call (CPU) succeeds
             mock_instance = MagicMock()
-            MockModel.side_effect = [
+            mock_model.side_effect = [
                 torch.cuda.OutOfMemoryError(),
                 mock_instance
             ]
@@ -173,7 +174,7 @@ class TestModelLoading:
                 model, metadata = load_model(mock_checkpoint_path, device="cuda")
 
             # Should have retried on CPU
-            assert MockModel.call_count == 2
+            assert mock_model.call_count == 2
             # Metadata should indicate CPU device after fallback
             # (This would work in actual implementation with recursion)
 
@@ -181,9 +182,9 @@ class TestModelLoading:
         """Test clearing model cache."""
         clear_model_cache()
 
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             mock_instance = MagicMock()
-            MockModel.return_value = mock_instance
+            mock_model.return_value = mock_instance
 
             # Load model
             load_model(mock_checkpoint_path)
@@ -195,7 +196,7 @@ class TestModelLoading:
             load_model(mock_checkpoint_path)
 
             # Should have called constructor twice (not cached)
-            assert MockModel.call_count == 2
+            assert mock_model.call_count == 2
 
     def test_load_model_with_custom_metadata(self, temp_dir):
         """Test loading model with custom configuration in metadata."""
@@ -217,14 +218,14 @@ class TestModelLoading:
         torch.save(checkpoint, checkpoint_path)
         clear_model_cache()
 
-        with patch('src.inference.model_loader.DrumPatternTransformer') as MockModel:
+        with patch('src.inference.model_loader.DrumPatternTransformer') as mock_model:
             mock_instance = MagicMock()
-            MockModel.return_value = mock_instance
+            mock_model.return_value = mock_instance
 
             model, metadata = load_model(checkpoint_path)
 
             # Verify custom config was used
-            MockModel.assert_called_once_with(
+            mock_model.assert_called_once_with(
                 vocab_size=1000,
                 n_styles=25,
                 n_positions=1024,

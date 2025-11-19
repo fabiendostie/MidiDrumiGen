@@ -1,9 +1,10 @@
 """Unit tests for FastAPI application."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 import redis
+from fastapi.testclient import TestClient
 
 from src.api.main import app
 

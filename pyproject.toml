@@ -43,6 +43,21 @@ exclude = '''
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    ".eggs",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "build",
+    "dist",
+    "docs/_old",
+]
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "F",   # pyflakes
@@ -59,21 +74,8 @@ ignore = [
     "E501",  # line too long (handled by black)
     "B008",  # function calls in argument defaults
 ]
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    ".eggs",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    "__pycache__",
-    "build",
-    "dist",
-    "docs/_old",
-]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "tests/*" = ["S101"]      # Allow assert in tests
 

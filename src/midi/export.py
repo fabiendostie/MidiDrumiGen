@@ -1,25 +1,25 @@
 """MIDI pattern export pipeline using mido."""
 
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
 import logging
+from pathlib import Path
 
-import mido
-from mido import MidiFile, MidiTrack, Message, MetaMessage
+from mido import Message, MetaMessage
 
+from .constants import DEFAULT_TICKS_PER_BEAT
+from .humanize import apply_style_humanization
 from .io import create_midi_file, save_midi_file
 from .validate import validate_drum_pattern
-from .humanize import apply_style_humanization
-from .constants import DEFAULT_TICKS_PER_BEAT
 
 logger = logging.getLogger(__name__)
 
+NOTE_DURATION_TICKS = 10  # Short duration for drum hits
+
 
 def export_pattern(
-    notes: List[Dict],
+    notes: list[dict],
     output_path: Path,
     tempo: int = 120,
-    time_signature: Tuple[int, int] = (4, 4),
+    time_signature: tuple[int, int] = (4, 4),
     humanize: bool = True,
     style_name: str = "Unknown",
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
@@ -99,7 +99,6 @@ def export_pattern(
     # then sort by time, then convert to delta times
 
     midi_events = []
-    NOTE_DURATION = 10  # Short duration for drum hits
 
     for note in processed_notes:
         note_time = note['time']
@@ -120,7 +119,7 @@ def export_pattern(
             'type': 'note_off',
             'note': pitch,
             'velocity': 0,
-            'time': note_time + NOTE_DURATION,
+            'time': note_time + NOTE_DURATION_TICKS,
             'channel': 9
         })
 
@@ -161,10 +160,10 @@ def export_pattern(
 
 
 def detokenize_to_notes(
-    tokens: List[int],
+    tokens: list[int],
     tokenizer,
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+) -> list[dict]:
     """
     Convert tokenized pattern to note list.
 
@@ -195,7 +194,7 @@ def detokenize_to_notes(
 
 
 def export_from_tokens(
-    tokens: List[int],
+    tokens: list[int],
     tokenizer,
     output_path: Path,
     **kwargs

@@ -1,22 +1,23 @@
 """Unit tests for styles module."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from src.models.styles import (
     PRODUCER_STYLES,
     STYLE_ALIASES,
-    normalize_style_name,
-    get_style_id,
-    get_style_params,
+    StyleNotFoundError,
+    get_all_styles_info,
     get_humanization_params,
     get_model_path,
-    list_available_styles,
     get_preferred_tempo_range,
-    validate_tempo_for_style,
     get_style_description,
-    get_all_styles_info,
-    StyleNotFoundError,
+    get_style_id,
+    get_style_params,
+    list_available_styles,
+    normalize_style_name,
+    validate_tempo_for_style,
 )
 
 
@@ -44,9 +45,9 @@ class TestProducerStylesRegistry:
             'humanization'
         ]
 
-        for style_name, style_data in PRODUCER_STYLES.items():
+        for _style_name, style_data in PRODUCER_STYLES.items():
             for field in required_fields:
-                assert field in style_data, f"{style_name} missing {field}"
+                assert field in style_data, f"{_style_name} missing {field}"
 
     def test_humanization_parameters(self):
         """Test that humanization parameters are present."""
@@ -57,14 +58,14 @@ class TestProducerStylesRegistry:
             'velocity_variation'
         ]
 
-        for style_name, style_data in PRODUCER_STYLES.items():
+        for _style_name, style_data in PRODUCER_STYLES.items():
             humanization = style_data['humanization']
             for param in required_humanization:
-                assert param in humanization, f"{style_name} missing {param}"
+                assert param in humanization, f"{_style_name} missing {param}"
 
     def test_tempo_ranges_valid(self):
         """Test that tempo ranges are valid tuples."""
-        for style_name, style_data in PRODUCER_STYLES.items():
+        for _style_name, style_data in PRODUCER_STYLES.items():
             tempo_range = style_data['preferred_tempo_range']
             assert isinstance(tempo_range, tuple)
             assert len(tempo_range) == 2
@@ -84,7 +85,7 @@ class TestStyleAliases:
 
     def test_aliases_map_to_valid_styles(self):
         """Test that all aliases map to valid style names."""
-        for alias, canonical_name in STYLE_ALIASES.items():
+        for _alias, canonical_name in STYLE_ALIASES.items():
             assert canonical_name in PRODUCER_STYLES
 
 
@@ -411,7 +412,7 @@ class TestGetAllStylesInfo:
         """Test that each style has complete information."""
         info = get_all_styles_info()
 
-        for style_name, style_data in info.items():
+        for _style_name, style_data in info.items():
             assert 'model_id' in style_data
             assert 'model_path' in style_data
             assert 'description' in style_data
@@ -420,7 +421,6 @@ class TestGetAllStylesInfo:
 
     def test_get_all_styles_info_is_copy(self):
         """Test that returned dict is a copy (not reference)."""
-        import copy
         info1 = get_all_styles_info()
         info2 = get_all_styles_info()
 

@@ -2,23 +2,33 @@
 """Test the complete architecture data flow: API → Redis → Celery → Result."""
 
 import sys
-import os
+import time
 from pathlib import Path
+
+import redis
+import requests
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
     import io
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Add project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
-import time
-import requests
-from src.tasks.tasks import generate_pattern
-from src.tasks.worker import celery_app
-import redis
+def _load_task_dependencies():
+    """Ensure project root is on sys.path and import Celery components."""
+    project_root = Path(__file__).parent.parent
+    project_root_str = str(project_root)
+    if project_root_str not in sys.path:
+        sys.path.insert(0, project_root_str)
+
+    from src.tasks.tasks import generate_pattern as celery_generate_pattern
+    from src.tasks.worker import celery_app as app
+
+    return celery_generate_pattern, app
+
+
+generate_pattern, celery_app = _load_task_dependencies()
 
 
 def test_redis_connection():
@@ -70,7 +80,7 @@ def test_celery_task_direct():
     if result.ready():
         if result.successful():
             task_result = result.get()
-            print(f"✓ Task completed successfully")
+            print("✓ Task completed successfully")
             print(f"  Status: {task_result.get('status')}")
             print(f"  MIDI Path: {task_result.get('midi_path')}")
             return True

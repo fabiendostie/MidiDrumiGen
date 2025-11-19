@@ -2,13 +2,16 @@
 
 import logging
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Callable
 
+import redis
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import redis
+
+from src.api.routes import generate, styles
+from src.api.routes import status as status_routes
 
 # Configure logging
 logging.basicConfig(
@@ -130,12 +133,9 @@ async def health():
     return health_status
 
 
-# Import routes
-from src.api.routes import generate, status, styles
-
 # Register routers
 app.include_router(generate.router, prefix="/api/v1", tags=["generation"])
-app.include_router(status.router, prefix="/api/v1", tags=["status"])
+app.include_router(status_routes.router, prefix="/api/v1", tags=["status"])
 app.include_router(styles.router, prefix="/api/v1", tags=["styles"])
 
 logger.info("✓ API routes registered")
