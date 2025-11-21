@@ -1,11 +1,10 @@
 """Unit tests for API routes (Phase 4)."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from fastapi.testclient import TestClient
-from src.api.main import app
-from src.api.models import ProducerStyle
+from unittest.mock import Mock, patch
 
+from fastapi.testclient import TestClient
+
+from src.api.main import app
 
 client = TestClient(app)
 
@@ -98,31 +97,23 @@ class TestStylesEndpoint:
 class TestGenerateEndpoint:
     """Tests for pattern generation endpoint."""
 
-    @patch('src.api.routes.generate.generate_pattern_task')
+    @patch("src.api.routes.generate.generate_pattern_task")
     def test_generate_returns_202(self, mock_task):
         """Test generate endpoint returns 202 Accepted."""
         # Mock Celery task
         mock_task.delay.return_value = Mock(id="test-task-id")
 
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 95
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 95}
 
         response = client.post("/api/v1/generate", json=request_data)
         assert response.status_code == 202
 
-    @patch('src.api.routes.generate.generate_pattern_task')
+    @patch("src.api.routes.generate.generate_pattern_task")
     def test_generate_returns_task_id(self, mock_task):
         """Test generate endpoint returns task ID."""
         mock_task.delay.return_value = Mock(id="test-task-id")
 
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 95
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 95}
 
         response = client.post("/api/v1/generate", json=request_data)
         data = response.json()
@@ -130,16 +121,12 @@ class TestGenerateEndpoint:
         assert "task_id" in data
         assert data["task_id"] == "test-task-id"
 
-    @patch('src.api.routes.generate.generate_pattern_task')
+    @patch("src.api.routes.generate.generate_pattern_task")
     def test_generate_returns_status(self, mock_task):
         """Test generate endpoint returns status."""
         mock_task.delay.return_value = Mock(id="test-task-id")
 
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 95
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 95}
 
         response = client.post("/api/v1/generate", json=request_data)
         data = response.json()
@@ -147,7 +134,7 @@ class TestGenerateEndpoint:
         assert "status" in data
         assert data["status"] == "queued"
 
-    @patch('src.api.routes.generate.generate_pattern_task')
+    @patch("src.api.routes.generate.generate_pattern_task")
     def test_generate_calls_celery_task(self, mock_task):
         """Test generate endpoint calls Celery task with correct params."""
         mock_task.delay.return_value = Mock(id="test-task-id")
@@ -160,7 +147,7 @@ class TestGenerateEndpoint:
             "humanize": True,
             "temperature": 1.0,
             "top_k": 50,
-            "top_p": 0.9
+            "top_p": 0.9,
         }
 
         client.post("/api/v1/generate", json=request_data)
@@ -173,33 +160,21 @@ class TestGenerateEndpoint:
 
     def test_generate_validates_bars(self):
         """Test generate endpoint validates bars parameter."""
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 0,  # Invalid
-            "tempo": 95
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 0, "tempo": 95}  # Invalid
 
         response = client.post("/api/v1/generate", json=request_data)
         assert response.status_code == 422  # Validation error
 
     def test_generate_validates_tempo(self):
         """Test generate endpoint validates tempo parameter."""
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 300  # Invalid
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 300}  # Invalid
 
         response = client.post("/api/v1/generate", json=request_data)
         assert response.status_code == 422  # Validation error
 
     def test_generate_validates_producer_style(self):
         """Test generate endpoint validates producer style."""
-        request_data = {
-            "producer_style": "Invalid Style",
-            "bars": 4,
-            "tempo": 95
-        }
+        request_data = {"producer_style": "Invalid Style", "bars": 4, "tempo": 95}
 
         response = client.post("/api/v1/generate", json=request_data)
         assert response.status_code == 422  # Validation error
@@ -208,22 +183,22 @@ class TestGenerateEndpoint:
 class TestStatusEndpoint:
     """Tests for task status endpoint."""
 
-    @patch('src.api.routes.status.AsyncResult')
+    @patch("src.api.routes.status.AsyncResult")
     def test_status_returns_200(self, mock_result):
         """Test status endpoint returns 200."""
         mock_task = Mock()
-        mock_task.state = 'PENDING'
+        mock_task.state = "PENDING"
         mock_task.info = None
         mock_result.return_value = mock_task
 
         response = client.get("/api/v1/status/test-task-id")
         assert response.status_code == 200
 
-    @patch('src.api.routes.status.AsyncResult')
+    @patch("src.api.routes.status.AsyncResult")
     def test_status_pending_task(self, mock_result):
         """Test status endpoint for pending task."""
         mock_task = Mock()
-        mock_task.state = 'PENDING'
+        mock_task.state = "PENDING"
         mock_task.info = None
         mock_result.return_value = mock_task
 
@@ -233,12 +208,12 @@ class TestStatusEndpoint:
         assert data["status"] == "pending"
         assert data["progress"] == 0
 
-    @patch('src.api.routes.status.AsyncResult')
+    @patch("src.api.routes.status.AsyncResult")
     def test_status_progress_task(self, mock_result):
         """Test status endpoint for task in progress."""
         mock_task = Mock()
-        mock_task.state = 'PROGRESS'
-        mock_task.info = {'progress': 50}
+        mock_task.state = "PROGRESS"
+        mock_task.info = {"progress": 50}
         mock_result.return_value = mock_task
 
         response = client.get("/api/v1/status/test-task-id")
@@ -247,15 +222,12 @@ class TestStatusEndpoint:
         assert data["status"] == "processing"
         assert data["progress"] == 50
 
-    @patch('src.api.routes.status.AsyncResult')
+    @patch("src.api.routes.status.AsyncResult")
     def test_status_success_task(self, mock_result):
         """Test status endpoint for successful task."""
         mock_task = Mock()
-        mock_task.state = 'SUCCESS'
-        mock_task.result = {
-            "midi_file": "output/test.mid",
-            "duration_seconds": 1.5
-        }
+        mock_task.state = "SUCCESS"
+        mock_task.result = {"midi_file": "output/test.mid", "duration_seconds": 1.5}
         mock_result.return_value = mock_task
 
         response = client.get("/api/v1/status/test-task-id")
@@ -265,11 +237,11 @@ class TestStatusEndpoint:
         assert data["progress"] == 100
         assert data["result"]["midi_file"] == "output/test.mid"
 
-    @patch('src.api.routes.status.AsyncResult')
+    @patch("src.api.routes.status.AsyncResult")
     def test_status_failure_task(self, mock_result):
         """Test status endpoint for failed task."""
         mock_task = Mock()
-        mock_task.state = 'FAILURE'
+        mock_task.state = "FAILURE"
         mock_task.info = Exception("Model loading failed")
         mock_result.return_value = mock_task
 

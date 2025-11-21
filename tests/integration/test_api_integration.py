@@ -8,11 +8,12 @@ These tests require:
 Run with: pytest tests/integration/test_api_integration.py -v -s
 """
 
-import pytest
-import requests
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
+import pytest
+import requests
 
 # Base URL for API
 API_BASE = "http://localhost:8000"
@@ -38,9 +39,9 @@ class TestAPIHealthAndConnectivity:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["redis"] == "connected", (
-            "Redis is not connected. Start Redis with: docker start redis"
-        )
+        assert (
+            data["redis"] == "connected"
+        ), "Redis is not connected. Start Redis with: docker start redis"
 
     def test_swagger_ui_accessible(self):
         """Test that Swagger UI documentation is accessible."""
@@ -74,7 +75,13 @@ class TestStylesEndpoint:
         response = requests.get(f"{API_BASE}/api/v1/styles")
         data = response.json()
 
-        required_fields = ["name", "model_id", "description", "preferred_tempo_range", "humanization"]
+        required_fields = [
+            "name",
+            "model_id",
+            "description",
+            "preferred_tempo_range",
+            "humanization",
+        ]
 
         for style in data["styles"]:
             for field in required_fields:
@@ -101,7 +108,7 @@ class TestStylesEndpoint:
 class TestPatternGenerationWorkflow:
     """Test complete pattern generation workflow end-to-end."""
 
-    def _poll_task_status(self, task_id: str, timeout: int = TASK_TIMEOUT) -> Dict[str, Any]:
+    def _poll_task_status(self, task_id: str, timeout: int = TASK_TIMEOUT) -> dict[str, Any]:
         """Poll task status until completion or timeout.
 
         Args:
@@ -153,13 +160,10 @@ class TestPatternGenerationWorkflow:
             "humanize": True,
             "temperature": 1.0,
             "top_k": 50,
-            "top_p": 0.9
+            "top_p": 0.9,
         }
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 202
         data = response.json()
@@ -196,17 +200,9 @@ class TestPatternGenerationWorkflow:
 
     def test_generate_metro_boomin_pattern(self):
         """Test generating a Metro Boomin style pattern."""
-        request_data = {
-            "producer_style": "Metro Boomin",
-            "bars": 2,
-            "tempo": 140,
-            "humanize": True
-        }
+        request_data = {"producer_style": "Metro Boomin", "bars": 2, "tempo": 140, "humanize": True}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 202
         task_id = response.json()["task_id"]
@@ -221,17 +217,9 @@ class TestPatternGenerationWorkflow:
 
     def test_generate_questlove_pattern(self):
         """Test generating a Questlove style pattern."""
-        request_data = {
-            "producer_style": "Questlove",
-            "bars": 2,
-            "tempo": 110,
-            "humanize": True
-        }
+        request_data = {"producer_style": "Questlove", "bars": 2, "tempo": 110, "humanize": True}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 202
         task_id = response.json()["task_id"]
@@ -246,17 +234,9 @@ class TestPatternGenerationWorkflow:
 
     def test_generate_without_humanization(self):
         """Test generating pattern without humanization."""
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 1,
-            "tempo": 95,
-            "humanize": False
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 1, "tempo": 95, "humanize": False}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 202
         task_id = response.json()["task_id"]
@@ -276,13 +256,10 @@ class TestPatternGenerationWorkflow:
             "tempo": 140,
             "temperature": 1.2,
             "top_k": 40,
-            "top_p": 0.85
+            "top_p": 0.85,
         }
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 202
         task_id = response.json()["task_id"]
@@ -303,13 +280,10 @@ class TestPatternGenerationWorkflow:
                 "producer_style": "J Dilla",
                 "bars": bars,
                 "tempo": 95,
-                "humanize": False
+                "humanize": False,
             }
 
-            response = requests.post(
-                f"{API_BASE}/api/v1/generate",
-                json=request_data
-            )
+            response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
             assert response.status_code == 202
             task_id = response.json()["task_id"]
@@ -330,16 +304,9 @@ class TestErrorHandling:
 
     def test_invalid_producer_style(self):
         """Test that invalid producer style is rejected."""
-        request_data = {
-            "producer_style": "Invalid Producer",
-            "bars": 4,
-            "tempo": 120
-        }
+        request_data = {"producer_style": "Invalid Producer", "bars": 4, "tempo": 120}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
         assert response.status_code == 422
         data = response.json()
@@ -348,47 +315,27 @@ class TestErrorHandling:
     def test_bars_out_of_range(self):
         """Test that bars outside valid range are rejected."""
         # Too few bars
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 0,
-            "tempo": 95
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 0, "tempo": 95}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
         # Too many bars
         request_data["bars"] = 33
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
     def test_tempo_out_of_range(self):
         """Test that tempo outside valid range is rejected."""
         # Too slow
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 59
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 59}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
         # Too fast
         request_data["tempo"] = 201
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
     def test_invalid_time_signature(self):
@@ -397,13 +344,10 @@ class TestErrorHandling:
             "producer_style": "J Dilla",
             "bars": 4,
             "tempo": 95,
-            "time_signature": [4, 3]  # Invalid denominator
+            "time_signature": [4, 3],  # Invalid denominator
         }
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
     def test_nonexistent_task_id(self):
@@ -417,25 +361,14 @@ class TestErrorHandling:
     def test_temperature_out_of_range(self):
         """Test that temperature outside valid range is rejected."""
         # Too low
-        request_data = {
-            "producer_style": "J Dilla",
-            "bars": 4,
-            "tempo": 95,
-            "temperature": 0.05
-        }
+        request_data = {"producer_style": "J Dilla", "bars": 4, "tempo": 95, "temperature": 0.05}
 
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
         # Too high
         request_data["temperature"] = 2.5
-        response = requests.post(
-            f"{API_BASE}/api/v1/generate",
-            json=request_data
-        )
+        response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
         assert response.status_code == 422
 
 
@@ -447,18 +380,10 @@ class TestConcurrentGeneration:
         tasks = []
 
         # Submit 3 tasks
-        for i in range(3):
-            request_data = {
-                "producer_style": "J Dilla",
-                "bars": 1,
-                "tempo": 95,
-                "humanize": False
-            }
+        for _ in range(3):
+            request_data = {"producer_style": "J Dilla", "bars": 1, "tempo": 95, "humanize": False}
 
-            response = requests.post(
-                f"{API_BASE}/api/v1/generate",
-                json=request_data
-            )
+            response = requests.post(f"{API_BASE}/api/v1/generate", json=request_data)
 
             assert response.status_code == 202
             tasks.append(response.json()["task_id"])

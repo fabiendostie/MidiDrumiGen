@@ -1,9 +1,10 @@
 """Unit tests for FastAPI application."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 import redis
+from fastapi.testclient import TestClient
 
 from src.api.main import app
 
@@ -49,7 +50,7 @@ class TestRootEndpoint:
 class TestHealthEndpoint:
     """Tests for health check endpoint."""
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_health_endpoint_with_redis_connected(self, mock_redis_class, client):
         """Test health endpoint when Redis is connected."""
         # Mock successful Redis connection
@@ -64,7 +65,7 @@ class TestHealthEndpoint:
         assert data["status"] == "healthy"
         assert data["redis"] == "connected"
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_health_endpoint_with_redis_disconnected(self, mock_redis_class, client):
         """Test health endpoint when Redis is disconnected."""
         # Mock Redis connection failure
@@ -79,7 +80,7 @@ class TestHealthEndpoint:
         assert data["status"] == "degraded"
         assert data["redis"] == "disconnected"
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_health_endpoint_structure(self, mock_redis_class, client):
         """Test health endpoint response structure."""
         mock_redis = MagicMock()
@@ -99,11 +100,7 @@ class TestCORSMiddleware:
     def test_cors_allows_all_origins(self, client):
         """Test that CORS allows all origins."""
         response = client.options(
-            "/",
-            headers={
-                "Origin": "http://example.com",
-                "Access-Control-Request-Method": "GET"
-            }
+            "/", headers={"Origin": "http://example.com", "Access-Control-Request-Method": "GET"}
         )
 
         # Should have CORS headers
@@ -111,10 +108,7 @@ class TestCORSMiddleware:
 
     def test_cors_allows_credentials(self, client):
         """Test that CORS allows credentials."""
-        response = client.get(
-            "/",
-            headers={"Origin": "http://example.com"}
-        )
+        response = client.get("/", headers={"Origin": "http://example.com"})
 
         # Check for allow credentials header
         headers_lower = {k.lower(): v for k, v in response.headers.items()}
@@ -127,6 +121,7 @@ class TestRequestLoggingMiddleware:
     def test_request_is_logged(self, client, caplog):
         """Test that requests are logged."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         response = client.get("/")
@@ -137,6 +132,7 @@ class TestRequestLoggingMiddleware:
     def test_response_includes_timing(self, client, caplog):
         """Test that response logging includes timing information."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         response = client.get("/")
@@ -176,10 +172,11 @@ class TestGlobalExceptionHandler:
 class TestLifespanEvents:
     """Tests for lifespan events."""
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_lifespan_startup_logs_message(self, mock_redis_class, caplog):
         """Test that startup event logs message."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         mock_redis = MagicMock()
@@ -193,7 +190,7 @@ class TestLifespanEvents:
         # Verify startup completed (logging is environment-specific)
         assert True
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_lifespan_checks_redis_connection(self, mock_redis_class, caplog):
         """Test that startup checks Redis connection."""
         mock_redis = MagicMock()
@@ -206,10 +203,11 @@ class TestLifespanEvents:
         # Should have called ping
         mock_redis.ping.assert_called()
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_lifespan_handles_redis_connection_error(self, mock_redis_class, caplog):
         """Test that startup handles Redis connection errors gracefully."""
         import logging
+
         caplog.set_level(logging.ERROR)
 
         mock_redis = MagicMock()
@@ -223,10 +221,11 @@ class TestLifespanEvents:
         # Startup should still succeed even with Redis error
         assert True
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_lifespan_shutdown_logs_message(self, mock_redis_class, caplog):
         """Test that shutdown event logs message."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         mock_redis = MagicMock()
@@ -297,7 +296,7 @@ class TestAPIResponses:
 class TestAPIIntegration:
     """Integration tests for API."""
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_full_health_check_flow(self, mock_redis_class, client):
         """Test complete health check flow."""
         mock_redis = MagicMock()
@@ -316,10 +315,11 @@ class TestAPIIntegration:
         assert health_data["status"] == "healthy"
         assert health_data["redis"] == "connected"
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_api_startup_and_endpoints(self, mock_redis_class, caplog):
         """Test API startup and endpoint availability."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         mock_redis = MagicMock()
@@ -354,7 +354,7 @@ class TestAPIEdgeCases:
 
         assert response.status_code == 404
 
-    @patch('redis.Redis')
+    @patch("redis.Redis")
     def test_health_with_multiple_checks(self, mock_redis_class, client):
         """Test health endpoint can be called multiple times."""
         mock_redis = MagicMock()

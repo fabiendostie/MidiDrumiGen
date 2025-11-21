@@ -1,0 +1,194 @@
+# MidiDrumiGen v2.0 Configuration
+# This is the main configuration file for v2.0 architecture
+
+# ============================================================================
+# LLM PROVIDERS
+# ============================================================================
+llm:
+  primary_provider: anthropic  # anthropic, google, or openai
+  fallback_providers:
+    - google
+    - openai
+
+  # Provider-specific settings
+  anthropic:
+    model: claude-3-5-sonnet-20241022
+    max_tokens: 4096
+    temperature: 0.8
+    timeout: 30  # seconds
+
+  google:
+    model: gemini-2.0-flash-exp  # or gemini-1.5-pro
+    max_tokens: 4096
+    temperature: 0.8
+    timeout: 20
+
+  openai:
+    model: chatgpt-4o-latest  # ChatGPT 5.1
+    max_tokens: 4096
+    temperature: 0.8
+    timeout: 30
+
+# ============================================================================
+# RESEARCH PIPELINE
+# ============================================================================
+research:
+  timeout_minutes: 20
+  min_sources_per_type: 3
+  min_sources_total: 10
+  max_audio_samples: 5
+
+  # Collector-specific settings
+  scholar:
+    enabled: true
+    max_papers: 10
+    timeout: 60
+
+  midi:
+    enabled: true
+    max_files: 15
+    timeout: 90
+
+  text:
+    enabled: true
+    max_articles: 20
+    timeout: 120
+
+  audio:
+    enabled: true
+    max_tracks: 5
+    timeout: 300  # Audio analysis is slowest
+
+# ============================================================================
+# DATABASE
+# ============================================================================
+database:
+  pool_size: 10
+  max_overflow: 20
+  pool_pre_ping: true
+  echo: false  # Set to true for SQL debugging
+
+  # Vector search settings
+  vector:
+    dimension: 384  # sentence-transformers dimension
+    metric: cosine
+    lists: 100  # IVF lists for pgvector
+
+# ============================================================================
+# REDIS & CELERY
+# ============================================================================
+redis:
+  broker_url: ${REDIS_URL}
+  result_backend: ${REDIS_URL}
+  task_serializer: json
+  result_serializer: json
+  accept_content: [json]
+  timezone: UTC
+  enable_utc: true
+  task_track_started: true
+  task_time_limit: 300  # 5 minutes
+  worker_prefetch_multiplier: 1
+
+  # Queue definitions
+  task_routes:
+    src.tasks.research.*: {queue: research}
+    src.tasks.generation.*: {queue: generation}
+    src.tasks.midi.*: {queue: midi}
+
+# ============================================================================
+# GENERATION
+# ============================================================================
+generation:
+  default_bars: 4
+  default_tempo: 120
+  default_time_signature: [4, 4]
+  default_variations: 4
+
+  # Humanization settings
+  humanization:
+    timing_variance: 0.015  # ±15ms
+    velocity_variance: 0.1   # ±10%
+    swing_range: [0.5, 0.67]
+    ghost_note_velocity_range: [20, 40]
+
+  # Validation
+  validation:
+    min_note: 35
+    max_note: 81
+    min_velocity: 1
+    max_velocity: 127
+    min_duration: 30  # ticks
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  version: 1
+  disable_existing_loggers: false
+
+  formatters:
+    json:
+      class: pythonjsonlogger.jsonlogger.JsonFormatter
+      format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+
+    simple:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: INFO
+      formatter: simple
+      stream: ext://sys.stdout
+
+    file:
+      class: logging.handlers.RotatingFileHandler
+      level: DEBUG
+      formatter: json
+      filename: logs/app.log
+      maxBytes: 10485760  # 10MB
+      backupCount: 5
+
+  loggers:
+    src:
+      level: DEBUG
+      handlers: [console, file]
+      propagate: false
+
+    celery:
+      level: INFO
+      handlers: [console, file]
+      propagate: false
+
+  root:
+    level: INFO
+    handlers: [console]
+
+# ============================================================================
+# PERFORMANCE
+# ============================================================================
+performance:
+  max_workers: 4
+  worker_concurrency: 2
+  enable_caching: true
+  cache_ttl: 86400  # 24 hours for style profiles
+
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    burst: 10
+
+# ============================================================================
+# MONITORING
+# ============================================================================
+monitoring:
+  enable_prometheus: false
+  enable_sentry: false
+  sentry_dsn: ${SENTRY_DSN}
+
+  # Metrics
+  metrics:
+    track_generation_time: true
+    track_llm_costs: true
+    track_cache_hit_rate: true

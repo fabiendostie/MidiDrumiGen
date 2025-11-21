@@ -2,14 +2,15 @@
 
 import pytest
 from pydantic import ValidationError
+
 from src.api.models import (
+    ErrorResponse,
     PatternGenerationRequest,
     ProducerStyle,
-    TaskResponse,
-    TaskStatusResponse,
     StyleInfo,
     StylesListResponse,
-    ErrorResponse,
+    TaskResponse,
+    TaskStatusResponse,
 )
 
 
@@ -57,118 +58,81 @@ class TestPatternGenerationRequest:
     def test_invalid_bars_too_low(self):
         """Test validation fails when bars < 1."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                bars=0
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, bars=0)
         assert "bars" in str(exc_info.value)
 
     def test_invalid_bars_too_high(self):
         """Test validation fails when bars > 32."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                bars=33
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, bars=33)
         assert "bars" in str(exc_info.value)
 
     def test_invalid_tempo_too_low(self):
         """Test validation fails when tempo < 60."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                tempo=59
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, tempo=59)
         assert "tempo" in str(exc_info.value)
 
     def test_invalid_tempo_too_high(self):
         """Test validation fails when tempo > 200."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                tempo=201
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, tempo=201)
         assert "tempo" in str(exc_info.value)
 
     def test_invalid_time_signature_denominator(self):
         """Test validation fails with invalid time signature denominator."""
         with pytest.raises(ValidationError) as exc_info:
             PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                time_signature=(4, 3)  # Invalid denominator
+                producer_style=ProducerStyle.J_DILLA, time_signature=(4, 3)  # Invalid denominator
             )
         assert "Denominator must be 2, 4, 8, or 16" in str(exc_info.value)
 
     def test_invalid_time_signature_numerator_too_low(self):
         """Test validation fails when numerator < 1."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                time_signature=(0, 4)
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, time_signature=(0, 4))
         assert "Numerator must be between 1 and 16" in str(exc_info.value)
 
     def test_invalid_time_signature_numerator_too_high(self):
         """Test validation fails when numerator > 16."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                time_signature=(17, 4)
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, time_signature=(17, 4))
         assert "Numerator must be between 1 and 16" in str(exc_info.value)
 
     def test_invalid_temperature_too_low(self):
         """Test validation fails when temperature < 0.1."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                temperature=0.05
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, temperature=0.05)
         assert "temperature" in str(exc_info.value)
 
     def test_invalid_temperature_too_high(self):
         """Test validation fails when temperature > 2.0."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                temperature=2.1
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, temperature=2.1)
         assert "temperature" in str(exc_info.value)
 
     def test_invalid_top_k_negative(self):
         """Test validation fails when top_k < 0."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                top_k=-1
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, top_k=-1)
         assert "top_k" in str(exc_info.value)
 
     def test_invalid_top_k_too_high(self):
         """Test validation fails when top_k > 100."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                top_k=101
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, top_k=101)
         assert "top_k" in str(exc_info.value)
 
     def test_invalid_top_p_too_low(self):
         """Test validation fails when top_p < 0.0."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                top_p=-0.1
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, top_p=-0.1)
         assert "top_p" in str(exc_info.value)
 
     def test_invalid_top_p_too_high(self):
         """Test validation fails when top_p > 1.0."""
         with pytest.raises(ValidationError) as exc_info:
-            PatternGenerationRequest(
-                producer_style=ProducerStyle.J_DILLA,
-                top_p=1.1
-            )
+            PatternGenerationRequest(producer_style=ProducerStyle.J_DILLA, top_p=1.1)
         assert "top_p" in str(exc_info.value)
 
 
@@ -178,9 +142,7 @@ class TestTaskResponse:
     def test_valid_task_response(self):
         """Test creating valid task response."""
         response = TaskResponse(
-            task_id="abc-123",
-            status="queued",
-            message="Task queued successfully"
+            task_id="abc-123", status="queued", message="Task queued successfully"
         )
 
         assert response.task_id == "abc-123"
@@ -193,11 +155,7 @@ class TestTaskStatusResponse:
 
     def test_pending_task_status(self):
         """Test task status for pending task."""
-        response = TaskStatusResponse(
-            task_id="abc-123",
-            status="pending",
-            progress=0
-        )
+        response = TaskStatusResponse(task_id="abc-123", status="pending", progress=0)
 
         assert response.task_id == "abc-123"
         assert response.status == "pending"
@@ -207,11 +165,7 @@ class TestTaskStatusResponse:
 
     def test_processing_task_status(self):
         """Test task status for processing task."""
-        response = TaskStatusResponse(
-            task_id="abc-123",
-            status="processing",
-            progress=50
-        )
+        response = TaskStatusResponse(task_id="abc-123", status="processing", progress=50)
 
         assert response.task_id == "abc-123"
         assert response.status == "processing"
@@ -222,13 +176,10 @@ class TestTaskStatusResponse:
         result = {
             "midi_file": "output/patterns/test.mid",
             "duration_seconds": 1.5,
-            "tokens_generated": 256
+            "tokens_generated": 256,
         }
         response = TaskStatusResponse(
-            task_id="abc-123",
-            status="completed",
-            progress=100,
-            result=result
+            task_id="abc-123", status="completed", progress=100, result=result
         )
 
         assert response.task_id == "abc-123"
@@ -239,9 +190,7 @@ class TestTaskStatusResponse:
     def test_failed_task_status(self):
         """Test task status for failed task."""
         response = TaskStatusResponse(
-            task_id="abc-123",
-            status="failed",
-            error="Model loading failed"
+            task_id="abc-123", status="failed", error="Model loading failed"
         )
 
         assert response.task_id == "abc-123"
@@ -251,21 +200,13 @@ class TestTaskStatusResponse:
     def test_invalid_progress_too_low(self):
         """Test validation fails when progress < 0."""
         with pytest.raises(ValidationError) as exc_info:
-            TaskStatusResponse(
-                task_id="abc-123",
-                status="processing",
-                progress=-1
-            )
+            TaskStatusResponse(task_id="abc-123", status="processing", progress=-1)
         assert "progress" in str(exc_info.value)
 
     def test_invalid_progress_too_high(self):
         """Test validation fails when progress > 100."""
         with pytest.raises(ValidationError) as exc_info:
-            TaskStatusResponse(
-                task_id="abc-123",
-                status="processing",
-                progress=101
-            )
+            TaskStatusResponse(task_id="abc-123", status="processing", progress=101)
         assert "progress" in str(exc_info.value)
 
 
@@ -278,14 +219,14 @@ class TestStyleInfo:
             "swing": 62.0,
             "micro_timing_ms": 20.0,
             "ghost_note_prob": 0.4,
-            "velocity_variation": 0.15
+            "velocity_variation": 0.15,
         }
         style = StyleInfo(
             name="J Dilla",
             model_id="j_dilla_v1",
             description="Signature swing and soulful groove",
             preferred_tempo_range=(85, 95),
-            humanization=humanization
+            humanization=humanization,
         )
 
         assert style.name == "J Dilla"
@@ -306,13 +247,10 @@ class TestStylesListResponse:
                 model_id="j_dilla_v1",
                 description="Test",
                 preferred_tempo_range=(85, 95),
-                humanization={}
+                humanization={},
             )
         ]
-        response = StylesListResponse(
-            styles=styles,
-            count=1
-        )
+        response = StylesListResponse(styles=styles, count=1)
 
         assert len(response.styles) == 1
         assert response.count == 1
@@ -328,7 +266,7 @@ class TestErrorResponse:
             error="ValidationError",
             message="Invalid input",
             details={"field": "tempo"},
-            path="/api/v1/generate"
+            path="/api/v1/generate",
         )
 
         assert response.error == "ValidationError"

@@ -1,22 +1,23 @@
 """Unit tests for styles module."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from src.models.styles import (
     PRODUCER_STYLES,
     STYLE_ALIASES,
-    normalize_style_name,
-    get_style_id,
-    get_style_params,
+    StyleNotFoundError,
+    get_all_styles_info,
     get_humanization_params,
     get_model_path,
-    list_available_styles,
     get_preferred_tempo_range,
-    validate_tempo_for_style,
     get_style_description,
-    get_all_styles_info,
-    StyleNotFoundError,
+    get_style_id,
+    get_style_params,
+    list_available_styles,
+    normalize_style_name,
+    validate_tempo_for_style,
 )
 
 
@@ -30,18 +31,18 @@ class TestProducerStylesRegistry:
 
     def test_producer_styles_has_required_styles(self):
         """Test that all required producer styles are present."""
-        required_styles = ['J Dilla', 'Metro Boomin', 'Questlove']
+        required_styles = ["J Dilla", "Metro Boomin", "Questlove"]
         for style in required_styles:
             assert style in PRODUCER_STYLES
 
     def test_producer_style_structure(self):
         """Test that each style has required fields."""
         required_fields = [
-            'model_id',
-            'model_path',
-            'description',
-            'preferred_tempo_range',
-            'humanization'
+            "model_id",
+            "model_path",
+            "description",
+            "preferred_tempo_range",
+            "humanization",
         ]
 
         for style_name, style_data in PRODUCER_STYLES.items():
@@ -51,21 +52,21 @@ class TestProducerStylesRegistry:
     def test_humanization_parameters(self):
         """Test that humanization parameters are present."""
         required_humanization = [
-            'swing',
-            'micro_timing_ms',
-            'ghost_note_prob',
-            'velocity_variation'
+            "swing",
+            "micro_timing_ms",
+            "ghost_note_prob",
+            "velocity_variation",
         ]
 
         for style_name, style_data in PRODUCER_STYLES.items():
-            humanization = style_data['humanization']
+            humanization = style_data["humanization"]
             for param in required_humanization:
                 assert param in humanization, f"{style_name} missing {param}"
 
     def test_tempo_ranges_valid(self):
         """Test that tempo ranges are valid tuples."""
-        for style_name, style_data in PRODUCER_STYLES.items():
-            tempo_range = style_data['preferred_tempo_range']
+        for _style_name, style_data in PRODUCER_STYLES.items():
+            tempo_range = style_data["preferred_tempo_range"]
             assert isinstance(tempo_range, tuple)
             assert len(tempo_range) == 2
             min_bpm, max_bpm = tempo_range
@@ -84,7 +85,7 @@ class TestStyleAliases:
 
     def test_aliases_map_to_valid_styles(self):
         """Test that all aliases map to valid style names."""
-        for alias, canonical_name in STYLE_ALIASES.items():
+        for _alias, canonical_name in STYLE_ALIASES.items():
             assert canonical_name in PRODUCER_STYLES
 
 
@@ -165,11 +166,11 @@ class TestGetStyleParams:
     def test_get_style_params_has_all_fields(self):
         """Test that returned params have all required fields."""
         params = get_style_params("J Dilla")
-        assert 'model_id' in params
-        assert 'model_path' in params
-        assert 'description' in params
-        assert 'preferred_tempo_range' in params
-        assert 'humanization' in params
+        assert "model_id" in params
+        assert "model_path" in params
+        assert "description" in params
+        assert "preferred_tempo_range" in params
+        assert "humanization" in params
 
     def test_get_style_params_different_styles(self):
         """Test getting params for different styles."""
@@ -177,8 +178,8 @@ class TestGetStyleParams:
         metro = get_style_params("Metro Boomin")
 
         # Should be different
-        assert j_dilla['model_id'] != metro['model_id']
-        assert j_dilla['description'] != metro['description']
+        assert j_dilla["model_id"] != metro["model_id"]
+        assert j_dilla["description"] != metro["description"]
 
     def test_get_style_params_invalid_style(self):
         """Test getting params for invalid style."""
@@ -197,34 +198,34 @@ class TestGetHumanizationParams:
     def test_get_humanization_params_has_required_keys(self):
         """Test that humanization params have required keys."""
         params = get_humanization_params("J Dilla")
-        assert 'swing' in params
-        assert 'micro_timing_ms' in params
-        assert 'ghost_note_prob' in params
-        assert 'velocity_variation' in params
+        assert "swing" in params
+        assert "micro_timing_ms" in params
+        assert "ghost_note_prob" in params
+        assert "velocity_variation" in params
 
     def test_get_humanization_params_j_dilla(self):
         """Test J Dilla humanization parameters."""
         params = get_humanization_params("J Dilla")
-        assert params['swing'] == 62.0
-        assert params['micro_timing_ms'] == 20.0
-        assert params['ghost_note_prob'] == 0.4
-        assert params['velocity_variation'] == 0.15
+        assert params["swing"] == 62.0
+        assert params["micro_timing_ms"] == 20.0
+        assert params["ghost_note_prob"] == 0.4
+        assert params["velocity_variation"] == 0.15
 
     def test_get_humanization_params_metro_boomin(self):
         """Test Metro Boomin humanization parameters."""
         params = get_humanization_params("Metro Boomin")
-        assert params['swing'] == 52.0
-        assert params['micro_timing_ms'] == 5.0
-        assert params['ghost_note_prob'] == 0.1
-        assert params['velocity_variation'] == 0.08
+        assert params["swing"] == 52.0
+        assert params["micro_timing_ms"] == 5.0
+        assert params["ghost_note_prob"] == 0.1
+        assert params["velocity_variation"] == 0.08
 
     def test_get_humanization_params_questlove(self):
         """Test Questlove humanization parameters."""
         params = get_humanization_params("Questlove")
-        assert params['swing'] == 58.0
-        assert params['micro_timing_ms'] == 12.0
-        assert params['ghost_note_prob'] == 0.5
-        assert params['velocity_variation'] == 0.20
+        assert params["swing"] == 58.0
+        assert params["micro_timing_ms"] == 12.0
+        assert params["ghost_note_prob"] == 0.5
+        assert params["velocity_variation"] == 0.20
 
 
 class TestGetModelPath:
@@ -411,21 +412,20 @@ class TestGetAllStylesInfo:
         """Test that each style has complete information."""
         info = get_all_styles_info()
 
-        for style_name, style_data in info.items():
-            assert 'model_id' in style_data
-            assert 'model_path' in style_data
-            assert 'description' in style_data
-            assert 'preferred_tempo_range' in style_data
-            assert 'humanization' in style_data
+        for _style_name, style_data in info.items():
+            assert "model_id" in style_data
+            assert "model_path" in style_data
+            assert "description" in style_data
+            assert "preferred_tempo_range" in style_data
+            assert "humanization" in style_data
 
     def test_get_all_styles_info_is_copy(self):
         """Test that returned dict is a copy (not reference)."""
-        import copy
         info1 = get_all_styles_info()
         info2 = get_all_styles_info()
 
         # Both calls should return the same data initially
-        assert info1['J Dilla']['description'] == info2['J Dilla']['description']
+        assert info1["J Dilla"]["description"] == info2["J Dilla"]["description"]
 
         # The function returns .copy(), which is a shallow copy
         # So modifying nested dicts will affect both (shallow copy behavior)

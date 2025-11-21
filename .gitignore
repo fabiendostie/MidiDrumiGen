@@ -200,3 +200,31 @@ dmypy.json
 
 # Pre-commit
 .pre-commit-config.yaml.bak
+
+# ============================================================================
+# PROJECT SPECIFIC EXCLUDES
+# ============================================================================
+
+# Generated output and cache
+output/
+data/
+
+# Temporary files
+nul
+handoff-prompt.json
+requirements_temp.txt
+
+# Archived documentation and tests
+docs/_old/
+tests/_archived_v1x/
+
+# IDE-specific context files
+.cursorcontext/
+.gemini/
+GEMINI.md
+
+# Generated reports
+docs/project-scan-report.json
+
+# Duplicate status file (use docs/sprint-artifacts/sprint-status.yaml)
+docs/sprint-status.yaml

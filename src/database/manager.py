@@ -27,6 +27,18 @@ from .models import Artist, GenerationHistory, StyleProfile
 logger = logging.getLogger(__name__)
 
 
+class ArtistNotFoundError(Exception):
+    """Raised when an artist is not found in the database."""
+
+    pass
+
+
+class DatabaseError(Exception):
+    """Raised when a database operation fails."""
+
+    pass
+
+
 class DatabaseManager:
     """
     Manages all database operations for MidiDrumiGen v2.0.
@@ -272,59 +284,89 @@ class DatabaseManager:
 
         Args:
             artist_name: Name of artist to find similar artists for
-            limit: Maximum number of similar artists to return
+            limit: Maximum number of similar artists to return (default 5, max 20)
 
         Returns:
             List of tuples (artist_name, similarity_score)
             Similarity score is between 0 and 1 (higher = more similar)
 
+        Raises:
+            ArtistNotFoundError: If the query artist doesn't exist in the database
+
         Implementation Notes:
             - Uses pgvector cosine distance: <=>
             - Query should complete in < 200ms using IVFFlat index
             - Excludes the query artist from results
+            - Filters out profiles with NULL embeddings
         """
-        async with self.SessionLocal() as session:
-            # Get query artist's embedding
-            result = await session.execute(
-                select(StyleProfile).join(Artist).where(Artist.name == artist_name)
-            )
-            query_profile = result.scalar_one_or_none()
+        # Validate and cap limit
+        if limit <= 0:
+            return []
+        limit = min(limit, 20)  # Cap at 20 to prevent resource exhaustion
 
-            if not query_profile or not query_profile.embedding:
-                logger.warning(f"No embedding found for artist: {artist_name}")
-                return []
+        try:
+            async with self.SessionLocal() as session:
+                # First check if artist exists
+                artist_result = await session.execute(
+                    select(Artist).where(Artist.name == artist_name)
+                )
+                artist = artist_result.scalar_one_or_none()
 
-            # Vector similarity search using pgvector
-            # Note: <=> operator calculates cosine distance
-            # Smaller distance = more similar
-            # similarity = 1 - distance
-            query = text(
+                if not artist:
+                    raise ArtistNotFoundError(f"Artist '{artist_name}' not found")
+
+                # Get query artist's StyleProfile with embedding
+                result = await session.execute(
+                    select(StyleProfile).where(StyleProfile.artist_id == artist.id)
+                )
+                query_profile = result.scalar_one_or_none()
+
+                if not query_profile:
+                    logger.info(f"No StyleProfile found for artist: {artist_name}")
+                    return []
+
+                if not query_profile.embedding:
+                    logger.info(f"No embedding found for artist: {artist_name}")
+                    return []
+
+                # Vector similarity search using pgvector
+                # Note: <=> operator calculates cosine distance
+                # Smaller distance = more similar
+                # similarity = 1 - distance
+                query = text(
+                    """
+                SELECT
+                    a.name,
+                    1 - (sp.embedding <=> :query_embedding) as similarity
+                FROM style_profiles sp
+                JOIN artists a ON sp.artist_id = a.id
+                WHERE a.name != :artist_name
+                  AND sp.embedding IS NOT NULL
+                ORDER BY sp.embedding <=> :query_embedding
+                LIMIT :limit
                 """
-            SELECT
-                a.name,
-                1 - (sp.embedding <=> :query_embedding) as similarity
-            FROM style_profiles sp
-            JOIN artists a ON sp.artist_id = a.id
-            WHERE a.name != :artist_name
-            ORDER BY sp.embedding <=> :query_embedding
-            LIMIT :limit
-            """
-            )
+                )
 
-            result = await session.execute(
-                query,
-                {
-                    "query_embedding": query_profile.embedding,
-                    "artist_name": artist_name,
-                    "limit": limit,
-                },
-            )
+                result = await session.execute(
+                    query,
+                    {
+                        "query_embedding": query_profile.embedding,
+                        "artist_name": artist_name,
+                        "limit": limit,
+                    },
+                )
 
-            similar_artists = [(row[0], float(row[1])) for row in result.fetchall()]
+                similar_artists = [(row[0], float(row[1])) for row in result.fetchall()]
 
-            logger.info(f"Found {len(similar_artists)} similar artists to {artist_name}")
+                logger.info(f"Found {len(similar_artists)} similar artists to {artist_name}")
 
-            return similar_artists
+                return similar_artists
+
+        except ArtistNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Database error during similarity search: {e}")
+            raise DatabaseError(f"Failed to search for similar artists: {e}") from e
 
     # =========================================================================
     # E3.S6: Generation History Analytics (Sprint 1 - TODO)

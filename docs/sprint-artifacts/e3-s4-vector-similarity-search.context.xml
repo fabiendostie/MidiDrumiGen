@@ -1,0 +1,232 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>4</storyId>
+    <title>Vector Similarity Search</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-21</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/e3-s4-vector-similarity-search.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to find artists similar to a given artist</iWant>
+    <soThat>I can discover new drumming styles</soThat>
+    <tasks>
+      <task id="1" name="Implement find_similar_artists() Method" acs="1,2,4">
+        <subtask id="1.1">Add find_similar_artists() method signature to DatabaseManager</subtask>
+        <subtask id="1.2">Implement query to retrieve query artist's embedding</subtask>
+        <subtask id="1.3">Implement vector similarity SQL query using pgvector &lt;=&gt; operator</subtask>
+        <subtask id="1.4">Convert cosine distance to similarity score (1 - distance)</subtask>
+        <subtask id="1.5">Filter out query artist from results</subtask>
+        <subtask id="1.6">Apply limit parameter with validation (cap at 20)</subtask>
+        <subtask id="1.7">Return formatted list of (artist_name, similarity) tuples</subtask>
+      </task>
+      <task id="2" name="Performance Optimization" acs="3">
+        <subtask id="2.1">Verify IVFFlat index exists on embedding column</subtask>
+        <subtask id="2.2">Test query execution plan using EXPLAIN ANALYZE</subtask>
+        <subtask id="2.3">Benchmark query performance with 100, 1,000, 10,000 profiles</subtask>
+        <subtask id="2.4">Ensure query completes &lt; 200ms at 10,000 profiles</subtask>
+      </task>
+      <task id="3" name="Error Handling &amp; Edge Cases" acs="4">
+        <subtask id="3.1">Raise ArtistNotFoundError if query artist doesn't exist</subtask>
+        <subtask id="3.2">Return empty list if query artist has no StyleProfile</subtask>
+        <subtask id="3.3">Validate limit parameter (0 returns [], &gt;20 capped at 20)</subtask>
+        <subtask id="3.4">Handle null embeddings (skip in WHERE clause)</subtask>
+        <subtask id="3.5">Handle database connection errors gracefully</subtask>
+      </task>
+      <task id="4" name="Unit Tests" acs="1,2,4">
+        <subtask id="4.1">Test successful similarity search with mock data</subtask>
+        <subtask id="4.2">Test similarity score calculation accuracy</subtask>
+        <subtask id="4.3">Test query artist exclusion</subtask>
+        <subtask id="4.4">Test limit parameter enforcement</subtask>
+        <subtask id="4.5">Test ArtistNotFoundError case</subtask>
+        <subtask id="4.6">Test empty results (artist without profile)</subtask>
+        <subtask id="4.7">Achieve &gt; 80% code coverage for find_similar_artists()</subtask>
+      </task>
+      <task id="5" name="Integration Tests" acs="1,2,3">
+        <subtask id="5.1">Create test fixtures with realistic embeddings</subtask>
+        <subtask id="5.2">Write integration test with real PostgreSQL + pgvector</subtask>
+        <subtask id="5.3">Verify similarity ranking matches expected order</subtask>
+        <subtask id="5.4">Benchmark performance with 10,000 test profiles</subtask>
+        <subtask id="5.5">Verify index usage via EXPLAIN ANALYZE in test</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="3.4.1" title="DatabaseManager Method Implementation">
+      <item>find_similar_artists(artist_name: str, limit: int = 5) method exists</item>
+      <item>Retrieves embedding for query artist from PostgreSQL</item>
+      <item>Performs vector similarity search using pgvector cosine distance operator (&lt;=&gt;)</item>
+      <item>Query uses IVFFlat index for performance optimization</item>
+      <item>Similarity score calculated as 1 - cosine_distance</item>
+      <item>Query artist excluded from results</item>
+      <item>Returns list of tuples: [(artist_name: str, similarity: float), ...]</item>
+      <item>Results ordered by similarity (highest first)</item>
+      <item>Respects limit parameter (default 5, max 20)</item>
+    </criterion>
+    <criterion id="3.4.2" title="Vector Similarity Accuracy">
+      <item>Given sample StyleProfiles with embeddings for J Dilla, Questlove, Travis Barker, John Bonham</item>
+      <item>When querying similar artists to "J Dilla" with limit=3</item>
+      <item>Then Questlove has highest similarity (similar tempo, swing, genre)</item>
+      <item>And Travis Barker has lowest similarity (very different tempo/style)</item>
+      <item>And similarity scores are in range 0.0-1.0</item>
+    </criterion>
+    <criterion id="3.4.3" title="Performance Requirements">
+      <item>Vector similarity search completes in &lt; 200ms for 10,000 StyleProfiles</item>
+      <item>Query execution plan confirms IVFFlat index usage</item>
+      <item>No full table scans on style_profiles table</item>
+    </criterion>
+    <criterion id="3.4.4" title="Edge Cases Handled">
+      <item>Query for non-existent artist raises ArtistNotFoundError</item>
+      <item>Query for artist without StyleProfile returns empty list</item>
+      <item>Query with limit=0 returns empty list</item>
+      <item>Query with limit &gt; 20 is capped at 20</item>
+      <item>Database with 0 other artists returns empty list</item>
+      <item>Handles null embeddings gracefully</item>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/ARCHITECTURE.md</path>
+        <title>System Architecture</title>
+        <section>Vector Similarity Search (lines 1318-1377)</section>
+        <snippet>Describes pgvector similarity search endpoint GET /api/v1/similar/{artist}, IVFFlat index configuration, cosine distance metric, and query patterns for finding similar artists.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>US-002: Augmentation Feature (lines 91-101)</section>
+        <snippet>User story for augmenting artist research with additional sources and discovering similar artists to improve generation quality.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epics and User Stories</title>
+        <section>Story E3.S4: Vector Similarity Search (lines 1317-1377)</section>
+        <snippet>Complete story definition with Gherkin acceptance criteria for finding similar artists using pgvector embeddings.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic 3 Technical Specification</title>
+        <section>Vector Similarity APIs (lines 183-196)</section>
+        <snippet>DatabaseManager.find_similar_artists() interface specification: Returns List[Tuple[str, float]] of artist names and similarity scores using pgvector.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>src/database/manager.py</path>
+        <kind>service</kind>
+        <symbol>DatabaseManager.find_similar_artists</symbol>
+        <lines>265-327</lines>
+        <reason>Primary method to implement - currently has basic implementation using raw SQL with pgvector &lt;=&gt; operator. Needs enhancement for edge case handling, limit validation, and error handling.</reason>
+      </file>
+      <file>
+        <path>src/database/manager.py</path>
+        <kind>service</kind>
+        <symbol>DatabaseManager.get_style_profile</symbol>
+        <lines>140-213</lines>
+        <reason>Existing method for retrieving StyleProfile - can be referenced for session handling patterns and Redis caching approach.</reason>
+      </file>
+      <file>
+        <path>src/database/models.py</path>
+        <kind>model</kind>
+        <symbol>StyleProfile</symbol>
+        <lines>86-137</lines>
+        <reason>Model with embedding column (Vector(384)) and IVFFlat index definition. Essential for understanding the data structure and index configuration.</reason>
+      </file>
+      <file>
+        <path>src/database/models.py</path>
+        <kind>model</kind>
+        <symbol>Artist</symbol>
+        <lines>29-55</lines>
+        <reason>Artist model linked to StyleProfile via one-to-one relationship. Query artist lookup uses Artist.name field.</reason>
+      </file>
+      <file>
+        <path>tests/unit/test_database_similarity.py</path>
+        <kind>test</kind>
+        <symbol>TestFindSimilarArtists</symbol>
+        <lines>50-188</lines>
+        <reason>Existing unit tests for find_similar_artists() - 5 test cases covering success, no embedding, not found, limit, and exclusion. Need to expand for edge cases.</reason>
+      </file>
+      <file>
+        <path>tests/unit/test_database_similarity.py</path>
+        <kind>test</kind>
+        <symbol>TestSimilarityScoring</symbol>
+        <lines>195-226</lines>
+        <reason>Tests for similarity score calculation and ordering. Verifies cosine distance to similarity conversion formula.</reason>
+      </file>
+    </code>
+    <dependencies>
+      <python>
+        <package name="sqlalchemy" version="2.0.36">ORM for database abstraction and async sessions</package>
+        <package name="asyncpg" version="0.29.0">Async PostgreSQL driver</package>
+        <package name="pgvector" version="0.3.6">pgvector bindings for Vector type and operators</package>
+        <package name="psycopg2-binary" version="2.9.10">PostgreSQL driver (sync fallback)</package>
+        <package name="redis" version="5.2.1">Redis client for caching</package>
+        <package name="pytest" version="8.0.0">Testing framework</package>
+        <package name="pytest-asyncio" version="0.23.5">Async test support</package>
+      </python>
+      <infrastructure>
+        <service name="PostgreSQL" version="16+">Primary database with pgvector extension</service>
+        <service name="pgvector" version="0.5.1+">Vector similarity search extension</service>
+      </infrastructure>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="performance">Query must complete in &lt; 200ms for 10,000 profiles (NFR-1)</constraint>
+    <constraint type="performance">Must use IVFFlat index for approximate nearest neighbor search</constraint>
+    <constraint type="architecture">Use async/await patterns with SQLAlchemy async sessions</constraint>
+    <constraint type="architecture">Integrate with existing DatabaseManager class structure</constraint>
+    <constraint type="data">Embeddings are 384-dimensional (sentence-transformers all-MiniLM-L6-v2)</constraint>
+    <constraint type="data">Similarity scores must be 0.0-1.0 range (converted from cosine distance)</constraint>
+    <constraint type="api">Limit parameter capped at 20 to prevent resource exhaustion</constraint>
+    <constraint type="testing">Must achieve &gt; 80% code coverage for new code</constraint>
+    <constraint type="testing">Integration tests require Docker PostgreSQL with pgvector</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>DatabaseManager.find_similar_artists</name>
+      <kind>method</kind>
+      <signature>async def find_similar_artists(self, artist_name: str, limit: int = 5) -&gt; list[tuple[str, float]]</signature>
+      <path>src/database/manager.py</path>
+    </interface>
+    <interface>
+      <name>pgvector cosine distance</name>
+      <kind>sql-operator</kind>
+      <signature>embedding &lt;=&gt; :query_embedding</signature>
+      <path>PostgreSQL with pgvector extension</path>
+    </interface>
+    <interface>
+      <name>GET /api/v1/similar/{artist}</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/v1/similar/{artist}?limit=5 -&gt; {"artist": str, "similar_artists": [{"name": str, "similarity": float}]}</signature>
+      <path>src/api/routes/utils.py (Epic 4)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Tests use pytest with pytest-asyncio for async support. Unit tests mock database sessions using AsyncMock and patch.object patterns. Integration tests require Docker Compose with PostgreSQL 16 + pgvector. Coverage target is 80%+ for new code. Slow integration tests are marked with @pytest.mark.slow and @pytest.mark.integration.
+    </standards>
+    <locations>
+      <location>tests/unit/test_database_similarity.py</location>
+      <location>tests/integration/test_vector_search.py</location>
+    </locations>
+    <ideas>
+      <idea ac="3.4.1">test_find_similar_returns_correct_format - Verify return type is list of (str, float) tuples</idea>
+      <idea ac="3.4.1">test_find_similar_limit_validation - Test limit=0, limit=-1, limit=100 edge cases</idea>
+      <idea ac="3.4.2">test_similarity_ranking_accuracy - Use realistic embeddings for J Dilla/Questlove/Travis Barker/John Bonham</idea>
+      <idea ac="3.4.3">test_performance_10k_profiles - Benchmark with 10,000 profiles, assert &lt; 200ms</idea>
+      <idea ac="3.4.3">test_index_usage_explain_analyze - Verify EXPLAIN shows Index Scan using idx_style_profiles_embedding</idea>
+      <idea ac="3.4.4">test_artist_not_found_raises_error - Verify ArtistNotFoundError for nonexistent artist</idea>
+      <idea ac="3.4.4">test_null_embedding_handling - Ensure profiles with NULL embeddings are skipped</idea>
+      <idea ac="3.4.4">test_empty_database_returns_empty - Single artist in DB returns empty similar list</idea>
+    </ideas>
+  </tests>
+</story-context>
