@@ -13,6 +13,7 @@ Story Points: 3
 import asyncio
 from typing import Any
 from urllib.parse import quote, urljoin
+from urllib.robotparser import RobotFileParser
 
 import aiohttp
 import spacy
@@ -112,6 +113,20 @@ class WebArticleCollector(BaseCollector):
         "approach",
     ]
 
+    # Request delay in seconds (polite rate limiting)
+    REQUEST_DELAY = 2.0
+
+    # User-Agent for polite scraping
+    USER_AGENT = "MidiDrumiGen/2.0 (Research Bot; +https://github.com/fabiendostie/MidiDrumiGen)"
+
+    # Source authority weights for confidence scoring
+    SOURCE_WEIGHTS = {
+        "drummerworld": 0.9,  # Specialized drummer resource
+        "wikipedia": 0.8,  # Reliable, comprehensive
+        "pitchfork": 0.6,  # Music journalism
+        "rolling_stone": 0.6,  # Music journalism
+    }
+
     def __init__(self, timeout: int = 300, min_articles: int = 5):
         """
         Initialize Web Article Collector.
@@ -122,6 +137,8 @@ class WebArticleCollector(BaseCollector):
         """
         super().__init__(timeout)
         self.min_articles = min_articles
+        self._robots_cache: dict[str, RobotFileParser] = {}
+        self._last_request_time: dict[str, float] = {}
 
         # Load spaCy model for NLP
         try:
@@ -184,6 +201,76 @@ class WebArticleCollector(BaseCollector):
         except Exception as e:
             raise CollectorError(f"Article collection failed: {e}") from e
 
+    async def _check_robots_txt(self, base_url: str, url: str) -> bool:
+        """
+        Check if URL is allowed by robots.txt.
+
+        Args:
+            base_url: Base URL of the site
+            url: Full URL to check
+
+        Returns:
+            True if allowed, False if disallowed
+        """
+        if base_url in self._robots_cache:
+            rp = self._robots_cache[base_url]
+        else:
+            try:
+                rp = RobotFileParser()
+                robots_url = urljoin(base_url, "/robots.txt")
+                rp.set_url(robots_url)
+                rp.read()
+                self._robots_cache[base_url] = rp
+            except Exception as e:
+                self.logger.debug(f"Could not read robots.txt for {base_url}: {e}")
+                return True  # Allow if we can't read robots.txt
+
+        return rp.can_fetch(self.USER_AGENT, url)
+
+    async def _enforce_rate_limit(self, site_name: str) -> None:
+        """
+        Enforce rate limiting with 2-second delay between requests to same site.
+
+        Args:
+            site_name: Name of the site
+        """
+        import time
+
+        current_time = time.time()
+        if site_name in self._last_request_time:
+            elapsed = current_time - self._last_request_time[site_name]
+            if elapsed < self.REQUEST_DELAY:
+                await asyncio.sleep(self.REQUEST_DELAY - elapsed)
+
+        self._last_request_time[site_name] = time.time()
+
+    def _calculate_article_confidence(self, article: dict[str, Any]) -> float:
+        """
+        Calculate confidence score for an article based on Dev Notes formula.
+
+        Args:
+            article: Dictionary with article data
+
+        Returns:
+            Confidence score between 0 and 1
+        """
+        site_name = article.get("site", "unknown")
+        base_confidence = self.SOURCE_WEIGHTS.get(site_name, 0.5)
+
+        # Content length boost (more content = more data)
+        word_count = article.get("word_count", 0)
+        length_boost = min(0.15, word_count / 5000)
+
+        # Drumming keyword density boost
+        keyword_count = article.get("keyword_count", 0)
+        keyword_boost = min(0.15, keyword_count * 0.02)
+
+        # Equipment mentions boost
+        equipment_count = len(article.get("equipment", []))
+        equipment_boost = min(0.1, equipment_count * 0.03)
+
+        return min(1.0, base_confidence + length_boost + keyword_boost + equipment_boost)
+
     async def _scrape_site(
         self, site_name: str, config: dict[str, Any], artist_name: str
     ) -> list[ResearchSource]:
@@ -216,22 +303,68 @@ class WebArticleCollector(BaseCollector):
             search_path = config["search"].format(artist=search_artist)
             url = urljoin(config["base"], search_path)
 
+            # Check robots.txt
+            if not await self._check_robots_txt(config["base"], url):
+                self.logger.debug(f"{site_name}: URL disallowed by robots.txt")
+                return articles
+
+            # Enforce rate limiting
+            await self._enforce_rate_limit(site_name)
+
             self.logger.debug(f"Scraping {site_name}: {url}")
 
-            # Fetch page
-            async with (
-                aiohttp.ClientSession() as session,
-                session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp,
-            ):
-                if resp.status == 404:
-                    self.logger.debug(f"{site_name}: Artist not found (404)")
-                    return articles
+            # Fetch page with retry logic
+            async def fetch_page():
+                headers = {"User-Agent": self.USER_AGENT}
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.get(
+                        url,
+                        timeout=aiohttp.ClientTimeout(total=30),
+                        headers=headers,
+                    ) as resp,
+                ):
+                    if resp.status == 404:
+                        self.logger.debug(f"{site_name}: Artist not found (404)")
+                        return None, 404
 
-                if resp.status != 200:
-                    self.logger.warning(f"{site_name} returned {resp.status}")
-                    return articles
+                    if resp.status == 429:
+                        # Rate limited - raise to trigger retry
+                        raise aiohttp.ClientResponseError(
+                            resp.request_info,
+                            resp.history,
+                            status=429,
+                            message="Rate limited",
+                        )
 
-                html = await resp.text()
+                    if resp.status in (500, 503):
+                        # Server error - raise to trigger retry
+                        raise aiohttp.ClientResponseError(
+                            resp.request_info,
+                            resp.history,
+                            status=resp.status,
+                            message=f"Server error {resp.status}",
+                        )
+
+                    if resp.status != 200:
+                        self.logger.warning(f"{site_name} returned {resp.status}")
+                        return None, resp.status
+
+                    html = await resp.text()
+                    return html, resp.status
+
+            # Use retry with exponential backoff for transient errors
+            try:
+                result = await self._retry_with_backoff(
+                    fetch_page, max_retries=3, initial_delay=1.0
+                )
+                html, status = result
+            except Exception as e:
+                self.logger.warning(f"{site_name}: All retries failed: {e}")
+                return articles
+
+            if html is None:
+                return articles
 
             # Parse HTML
             soup = BeautifulSoup(html, "lxml")
@@ -242,6 +375,16 @@ class WebArticleCollector(BaseCollector):
             if content:
                 # Extract equipment and techniques
                 extracted = self._extract_equipment_and_techniques(content)
+                word_count = len(content.split())
+
+                # Calculate confidence using proper formula
+                article_data = {
+                    "site": site_name,
+                    "word_count": word_count,
+                    "keyword_count": 0,  # Will be set after NLP filtering
+                    "equipment": extracted.get("equipment_mentions", []),
+                }
+                confidence = self._calculate_article_confidence(article_data)
 
                 articles.append(
                     ResearchSource(
@@ -250,8 +393,8 @@ class WebArticleCollector(BaseCollector):
                         url=url,
                         raw_content=content,
                         extracted_data=extracted,
-                        confidence=0.6,  # Baseline for web articles
-                        metadata={"site": site_name, "word_count": len(content.split())},
+                        confidence=confidence,
+                        metadata={"site": site_name, "word_count": word_count},
                     )
                 )
 
@@ -322,11 +465,16 @@ class WebArticleCollector(BaseCollector):
             )
 
             if keyword_count >= 3:  # Threshold
-                # Boost confidence based on keyword density
-                keyword_density = keyword_count / len(doc)
-                article.confidence *= 1 + keyword_density * 0.5
-                article.confidence = min(article.confidence, 1.0)
+                # Recalculate confidence with keyword count
+                article_data = {
+                    "site": article.metadata.get("site", "unknown"),
+                    "word_count": article.metadata.get("word_count", 0),
+                    "keyword_count": keyword_count,
+                    "equipment": article.extracted_data.get("equipment_mentions", []),
+                }
+                article.confidence = self._calculate_article_confidence(article_data)
 
+                keyword_density = keyword_count / len(doc) if len(doc) > 0 else 0
                 article.extracted_data["keyword_count"] = keyword_count
                 article.extracted_data["keyword_density"] = keyword_density
 
