@@ -1,4 +1,4 @@
-# generated: 2025-11-18
+# generated: 2025-11-21
 # project: MidiDrumiGen
 # project_key: mididrum-v2
 # tracking_system: file-system
@@ -29,7 +29,7 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-18
+generated: 2025-11-21
 project: MidiDrumiGen
 project_key: mididrum-v2
 tracking_system: file-system
@@ -38,14 +38,14 @@ story_location: docs/sprint-artifacts
 development_status:
   # Epic 1: Research Pipeline
   epic-1: contexted
-  e1-s1-scholar-paper-collection: backlog
-  e1-s2-web-article-collection: backlog
-  e1-s3-audio-analysis-collection: backlog
-  e1-s4-midi-database-collection: backlog
-  e1-s5-style-profile-builder: backlog
-  e1-s6-research-orchestrator: backlog
-  e1-s7-research-api-endpoint: backlog
-  e1-s8-augmentation-feature: backlog
+  e1-s1-scholar-paper-collection: review
+  e1-s2-web-article-collection: review
+  e1-s3-audio-analysis-collection: in-progress
+  e1-s4-midi-database-collection: ready-for-dev
+  e1-s5-style-profile-builder: ready-for-dev
+  e1-s6-research-orchestrator: ready-for-dev
+  e1-s7-research-api-endpoint: ready-for-dev
+  e1-s8-augmentation-feature: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2: LLM Generation Engine
@@ -62,13 +62,13 @@ development_status:
   # Epic 3: Database & Caching - FULLY VERIFIED COMPLETE
   # Test Results: 29/29 passed (100%), 83% code coverage
   epic-3: contexted
-  e3-s1-database-models: done  # 100% test coverage - models.py fully implemented
-  e3-s2-database-manager: done  # 83% test coverage - all CRUD operations with Redis caching
-  e3-s3-alembic-migrations: done  # Migration verified - creates all tables with pgvector
-  e3-s4-vector-similarity-search: done  # 86% coverage - all ACs verified, Senior Dev Review: APPROVED
-  e3-s5-redis-caching-layer: done  # Cache read/write/invalidate working (11/11 tests pass)
-  e3-s6-generation-history-analytics: done  # Stats & history methods implemented (8/8 tests pass)
-  e3-s7-fix-redis-cache-deserialization: done  # Fixed cache deserialization with StyleProfile reconstruction
+  e3-s1-database-models: done
+  e3-s2-database-manager: done
+  e3-s3-alembic-migrations: done
+  e3-s4-vector-similarity-search: done
+  e3-s5-redis-caching-layer: done
+  e3-s6-generation-history-analytics: done
+  e3-s7-fix-redis-cache-deserialization: done
   epic-3-retrospective: optional
 
   # Epic 4: API Layer
