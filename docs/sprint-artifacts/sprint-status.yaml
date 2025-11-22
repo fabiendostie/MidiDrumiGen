@@ -41,7 +41,7 @@ development_status:
   e1-s1-scholar-paper-collection: review
   e1-s2-web-article-collection: review
   e1-s3-audio-analysis-collection: review
-  e1-s4-midi-database-collection: ready-for-dev
+  e1-s4-midi-database-collection: review
   e1-s5-style-profile-builder: ready-for-dev
   e1-s6-research-orchestrator: ready-for-dev
   e1-s7-research-api-endpoint: ready-for-dev
