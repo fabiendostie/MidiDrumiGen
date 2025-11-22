@@ -1,9 +1,8 @@
 """Pattern validation for drum patterns."""
 
-from typing import List, Dict, Tuple
 import logging
 
-from .constants import MIN_DRUM_NOTE, MAX_DRUM_NOTE, DEFAULT_TICKS_PER_BEAT
+from .constants import DEFAULT_TICKS_PER_BEAT, MAX_DRUM_NOTE, MIN_DRUM_NOTE
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +16,8 @@ EXCLUSIVE_PAIRS = [
 
 
 def validate_drum_pattern(
-    notes: List[Dict],
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
-    allow_empty: bool = False
-) -> Tuple[bool, List[str]]:
+    notes: list[dict], ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT, allow_empty: bool = False
+) -> tuple[bool, list[str]]:
     """
     Validate drum pattern for musical correctness and physical constraints.
 
@@ -57,32 +54,29 @@ def validate_drum_pattern(
 
     # 1. Validate note range (GM drums: 35-81)
     for i, note in enumerate(notes):
-        pitch = note.get('pitch')
+        pitch = note.get("pitch")
         if pitch is None:
             errors.append(f"Note {i}: missing 'pitch' key")
             continue
 
         if not (MIN_DRUM_NOTE <= pitch <= MAX_DRUM_NOTE):
             errors.append(
-                f"Note {i}: invalid drum note {pitch} "
-                f"(must be {MIN_DRUM_NOTE}-{MAX_DRUM_NOTE})"
+                f"Note {i}: invalid drum note {pitch} " f"(must be {MIN_DRUM_NOTE}-{MAX_DRUM_NOTE})"
             )
 
     # 2. Validate velocity range (1-127, 0 is reserved for note off)
     for i, note in enumerate(notes):
-        velocity = note.get('velocity')
+        velocity = note.get("velocity")
         if velocity is None:
             errors.append(f"Note {i}: missing 'velocity' key")
             continue
 
         if not (1 <= velocity <= 127):
-            errors.append(
-                f"Note {i}: invalid velocity {velocity} (must be 1-127)"
-            )
+            errors.append(f"Note {i}: invalid velocity {velocity} (must be 1-127)")
 
     # 3. Validate time values (must be non-negative)
     for i, note in enumerate(notes):
-        time = note.get('time')
+        time = note.get("time")
         if time is None:
             errors.append(f"Note {i}: missing 'time' key")
             continue
@@ -97,32 +91,30 @@ def validate_drum_pattern(
     # 4. Check pattern density (notes per beat)
     if notes:
         # Find pattern duration
-        max_time = max(n['time'] for n in notes)
+        max_time = max(n["time"] for n in notes)
         duration_in_beats = max_time / ticks_per_beat
 
         if duration_in_beats > 0:
             density = len(notes) / duration_in_beats
 
             # Reasonable density limits
-            MIN_DENSITY = 0.5  # At least 0.5 notes per beat
-            MAX_DENSITY = 16   # Max 16 notes per beat (64th notes)
+            min_density = 0.5  # At least 0.5 notes per beat
+            max_density = 16  # Max 16 notes per beat (64th notes)
 
-            if density < MIN_DENSITY:
+            if density < min_density:
                 errors.append(
-                    f"Pattern too sparse ({density:.2f} notes/beat, "
-                    f"minimum {MIN_DENSITY})"
+                    f"Pattern too sparse ({density:.2f} notes/beat, " f"minimum {min_density})"
                 )
-            elif density > MAX_DENSITY:
+            elif density > max_density:
                 errors.append(
-                    f"Pattern too dense ({density:.2f} notes/beat, "
-                    f"maximum {MAX_DENSITY})"
+                    f"Pattern too dense ({density:.2f} notes/beat, " f"maximum {max_density})"
                 )
 
     # 5. Group notes by time for simultaneous hit checking
-    time_groups: Dict[int, List[int]] = {}
+    time_groups: dict[int, list[int]] = {}
     for note in notes:
-        time = note['time']
-        pitch = note['pitch']
+        time = note["time"]
+        pitch = note["pitch"]
         time_groups.setdefault(time, []).append(pitch)
 
     # 6. Check for impossible simultaneous hits
@@ -136,12 +128,12 @@ def validate_drum_pattern(
                 )
 
     # 7. Check maximum simultaneous hits (realistic limit)
-    MAX_SIMULTANEOUS = 4  # Human has 4 limbs
+    max_simultaneous = 4  # Human has 4 limbs
     for time, pitches in time_groups.items():
-        if len(pitches) > MAX_SIMULTANEOUS:
+        if len(pitches) > max_simultaneous:
             errors.append(
                 f"Too many simultaneous hits at time {time}: "
-                f"{len(pitches)} notes (maximum {MAX_SIMULTANEOUS})"
+                f"{len(pitches)} notes (maximum {max_simultaneous})"
             )
 
     # 8. Check for duplicate notes at same time (same pitch multiple times)
@@ -149,9 +141,7 @@ def validate_drum_pattern(
         unique_pitches = set(pitches)
         if len(unique_pitches) < len(pitches):
             duplicates = [p for p in pitches if pitches.count(p) > 1]
-            errors.append(
-                f"Duplicate notes at time {time}: {set(duplicates)}"
-            )
+            errors.append(f"Duplicate notes at time {time}: {set(duplicates)}")
 
     is_valid = len(errors) == 0
 
@@ -163,7 +153,7 @@ def validate_drum_pattern(
     return is_valid, errors
 
 
-def validate_pattern_structure(notes: List[Dict]) -> Tuple[bool, List[str]]:
+def validate_pattern_structure(notes: list[dict]) -> tuple[bool, list[str]]:
     """
     Validate that note dictionaries have required structure.
 
@@ -181,7 +171,7 @@ def validate_pattern_structure(notes: List[Dict]) -> Tuple[bool, List[str]]:
         >>> print(errors)  # ['Note 0: missing velocity', 'Note 0: missing time']
     """
     errors = []
-    required_keys = ['pitch', 'velocity', 'time']
+    required_keys = ["pitch", "velocity", "time"]
 
     for i, note in enumerate(notes):
         if not isinstance(note, dict):
@@ -195,7 +185,7 @@ def validate_pattern_structure(notes: List[Dict]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def get_pattern_statistics(notes: List[Dict], ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT) -> Dict:
+def get_pattern_statistics(notes: list[dict], ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT) -> dict:
     """
     Calculate pattern statistics for debugging/analysis.
 
@@ -213,27 +203,27 @@ def get_pattern_statistics(notes: List[Dict], ticks_per_beat: int = DEFAULT_TICK
     """
     if not notes:
         return {
-            'total_notes': 0,
-            'unique_pitches': 0,
-            'duration_beats': 0,
-            'density': 0,
-            'velocity_range': (0, 0),
-            'time_range': (0, 0),
+            "total_notes": 0,
+            "unique_pitches": 0,
+            "duration_beats": 0,
+            "density": 0,
+            "velocity_range": (0, 0),
+            "time_range": (0, 0),
         }
 
-    pitches = [n['pitch'] for n in notes]
-    velocities = [n['velocity'] for n in notes]
-    times = [n['time'] for n in notes]
+    pitches = [n["pitch"] for n in notes]
+    velocities = [n["velocity"] for n in notes]
+    times = [n["time"] for n in notes]
 
     duration_beats = (max(times) - min(times)) / ticks_per_beat if times else 0
     density = len(notes) / duration_beats if duration_beats > 0 else 0
 
     return {
-        'total_notes': len(notes),
-        'unique_pitches': len(set(pitches)),
-        'duration_beats': duration_beats,
-        'density': density,
-        'velocity_range': (min(velocities), max(velocities)),
-        'time_range': (min(times), max(times)),
-        'pitch_counts': {p: pitches.count(p) for p in set(pitches)},
+        "total_notes": len(notes),
+        "unique_pitches": len(set(pitches)),
+        "duration_beats": duration_beats,
+        "density": density,
+        "velocity_range": (min(velocities), max(velocities)),
+        "time_range": (min(times), max(times)),
+        "pitch_counts": {p: pitches.count(p) for p in set(pitches)},
     }

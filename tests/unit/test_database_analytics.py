@@ -5,7 +5,7 @@ Story: E3.S6 - Generation History Analytics
 Test Coverage: Stats aggregation, history queries, API endpoints
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -42,7 +42,7 @@ def sample_generation_history():
             cost_usd=0.0123,
             user_params={"bars": 4, "tempo": 95},
             output_files=["output/patterns/jdilla_001.mid"],
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
         ),
         GenerationHistory(
             id=2,
@@ -54,7 +54,7 @@ def sample_generation_history():
             cost_usd=0.0045,
             user_params={"bars": 8, "tempo": 90},
             output_files=["output/patterns/jdilla_002.mid"],
-            created_at=datetime.now() - timedelta(hours=1),
+            created_at=datetime.now(UTC) - timedelta(hours=1),
         ),
         GenerationHistory(
             id=3,
@@ -66,7 +66,7 @@ def sample_generation_history():
             cost_usd=0.0150,
             user_params={"bars": 4, "tempo": 100},
             output_files=["output/patterns/jdilla_003.mid"],
-            created_at=datetime.now() - timedelta(hours=2),
+            created_at=datetime.now(UTC) - timedelta(hours=2),
         ),
     ]
 
@@ -294,7 +294,7 @@ class TestAnalyticsAPIEndpoints:
                 "cost_usd": 0.0123,
                 "user_params": {"bars": 4, "tempo": 95},
                 "output_files": ["output/patterns/jdilla_001.mid"],
-                "created_at": datetime.now().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             }
         ]
 

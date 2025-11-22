@@ -1,7 +1,6 @@
 """Pydantic response models for API responses."""
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Tuple
 
 
 class TaskResponse(BaseModel):
@@ -16,7 +15,7 @@ class TaskResponse(BaseModel):
             "example": {
                 "task_id": "abc123-def456-ghi789",
                 "status": "queued",
-                "message": "Pattern generation queued successfully"
+                "message": "Pattern generation queued successfully",
             }
         }
 
@@ -26,11 +25,11 @@ class TaskStatusResponse(BaseModel):
 
     task_id: str
     status: str
-    progress: Optional[int] = Field(None, ge=0, le=100, description="Progress percentage")
-    result: Optional[dict] = Field(None, description="Task result (if completed)")
-    error: Optional[str] = Field(None, description="Error message (if failed)")
-    created_at: Optional[str] = Field(None, description="Task creation timestamp")
-    completed_at: Optional[str] = Field(None, description="Task completion timestamp")
+    progress: int | None = Field(None, ge=0, le=100, description="Progress percentage")
+    result: dict | None = Field(None, description="Task result (if completed)")
+    error: str | None = Field(None, description="Error message (if failed)")
+    created_at: str | None = Field(None, description="Task creation timestamp")
+    completed_at: str | None = Field(None, description="Task completion timestamp")
 
     class Config:
         json_schema_extra = {
@@ -44,8 +43,8 @@ class TaskStatusResponse(BaseModel):
                     "tokens_generated": 256,
                     "style": "J Dilla",
                     "bars": 4,
-                    "tempo": 95
-                }
+                    "tempo": 95,
+                },
             }
         }
 
@@ -56,7 +55,7 @@ class StyleInfo(BaseModel):
     name: str
     model_id: str
     description: str
-    preferred_tempo_range: Tuple[int, int]
+    preferred_tempo_range: tuple[int, int]
     humanization: dict
 
     class Config:
@@ -70,8 +69,8 @@ class StyleInfo(BaseModel):
                     "swing": 62.0,
                     "micro_timing_ms": 20.0,
                     "ghost_note_prob": 0.4,
-                    "velocity_variation": 0.15
-                }
+                    "velocity_variation": 0.15,
+                },
             }
         }
 
@@ -79,7 +78,7 @@ class StyleInfo(BaseModel):
 class StylesListResponse(BaseModel):
     """Response model for styles list."""
 
-    styles: List[StyleInfo]
+    styles: list[StyleInfo]
     count: int
 
     class Config:
@@ -92,9 +91,9 @@ class StylesListResponse(BaseModel):
                         "model_id": "j_dilla_v1",
                         "description": "Signature swing and soulful groove",
                         "preferred_tempo_range": [85, 95],
-                        "humanization": {"swing": 62.0}
+                        "humanization": {"swing": 62.0},
                     }
-                ]
+                ],
             }
         }
 
@@ -104,5 +103,5 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[dict] = Field(None, description="Additional error details")
-    path: Optional[str] = Field(None, description="Request path")
+    details: dict | None = Field(None, description="Additional error details")
+    path: str | None = Field(None, description="Request path")
