@@ -6,7 +6,7 @@ Test Coverage: Cache hit/miss, TTL, invalidation, serialization
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -55,7 +55,7 @@ def sample_style_profile():
         midi_templates_json=[{"bar": 1, "notes": [{"time": 0, "note": 36, "velocity": 90}]}],
         confidence_score=0.89,
         sources_count=15,
-        updated_at=datetime.now(),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -222,19 +222,21 @@ class TestCacheInvalidation:
         """Should invalidate cache when saving style profile."""
         mock_redis = AsyncMock()
 
-        with patch.object(db_manager_with_redis, "get_redis", return_value=mock_redis):
-            with patch.object(db_manager_with_redis, "SessionLocal") as mock_session:
-                mock_session_instance = AsyncMock()
-                mock_session_instance.commit = AsyncMock()
-                mock_session_instance.refresh = AsyncMock()
-                mock_session.return_value.__aenter__.return_value = mock_session_instance
+        with (
+            patch.object(db_manager_with_redis, "get_redis", return_value=mock_redis),
+            patch.object(db_manager_with_redis, "SessionLocal") as mock_session,
+        ):
+            mock_session_instance = AsyncMock()
+            mock_session_instance.commit = AsyncMock()
+            mock_session_instance.refresh = AsyncMock()
+            mock_session.return_value.__aenter__.return_value = mock_session_instance
 
-                await db_manager_with_redis.save_style_profile(
-                    mock_session_instance, sample_style_profile
-                )
+            await db_manager_with_redis.save_style_profile(
+                mock_session_instance, sample_style_profile
+            )
 
-                # Verify cache was invalidated
-                mock_redis.delete.assert_called_once()
+            # Verify cache was invalidated
+            mock_redis.delete.assert_called_once()
 
 
 # =============================================================================
