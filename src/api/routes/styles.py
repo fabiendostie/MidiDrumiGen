@@ -1,8 +1,10 @@
 """Producer styles API routes."""
 
 import logging
+
 from fastapi import APIRouter, HTTPException, status
-from src.api.models import StylesListResponse, StyleInfo
+
+from src.api.models import StyleInfo, StylesListResponse
 from src.models.styles import get_all_styles_info
 
 logger = logging.getLogger(__name__)
@@ -14,7 +16,7 @@ router = APIRouter()
     "/styles",
     response_model=StylesListResponse,
     summary="List available styles",
-    description="Get catalog of all available producer styles"
+    description="Get catalog of all available producer styles",
 )
 async def list_styles() -> StylesListResponse:
     """
@@ -57,24 +59,21 @@ async def list_styles() -> StylesListResponse:
         styles_list = [
             StyleInfo(
                 name=name,
-                model_id=info['model_id'],
-                description=info['description'],
-                preferred_tempo_range=info['preferred_tempo_range'],
-                humanization=info['humanization']
+                model_id=info["model_id"],
+                description=info["description"],
+                preferred_tempo_range=info["preferred_tempo_range"],
+                humanization=info["humanization"],
             )
             for name, info in styles_dict.items()
         ]
 
         logger.info(f"Returning {len(styles_list)} available styles")
 
-        return StylesListResponse(
-            styles=styles_list,
-            count=len(styles_list)
-        )
+        return StylesListResponse(styles=styles_list, count=len(styles_list))
 
     except Exception as e:
         logger.error(f"Failed to retrieve styles: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve styles: {str(e)}"
-        )
+            detail=f"Failed to retrieve styles: {str(e)}",
+        ) from e

@@ -2,11 +2,11 @@
 
 from src.api.models.requests import PatternGenerationRequest, ProducerStyle
 from src.api.models.responses import (
-    TaskResponse,
-    TaskStatusResponse,
+    ErrorResponse,
     StyleInfo,
     StylesListResponse,
-    ErrorResponse,
+    TaskResponse,
+    TaskStatusResponse,
 )
 
 __all__ = [

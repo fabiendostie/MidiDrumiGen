@@ -1,12 +1,13 @@
 """Pydantic request models for API validation."""
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Tuple, Optional
 from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProducerStyle(str, Enum):
     """Available producer styles (legacy - for backward compatibility)."""
+
     J_DILLA = "J Dilla"
     METRO_BOOMIN = "Metro Boomin"
     QUESTLOVE = "Questlove"
@@ -15,58 +16,33 @@ class ProducerStyle(str, Enum):
 class PatternGenerationRequest(BaseModel):
     """Request model for pattern generation with dynamic producer names."""
 
-    producer_name: Optional[str] = Field(
-        None,
-        description="Producer name (any name, e.g., 'Timbaland', 'Aphex Twin', 'J Dilla')"
+    producer_name: str | None = Field(
+        None, description="Producer name (any name, e.g., 'Timbaland', 'Aphex Twin', 'J Dilla')"
     )
-    producer_style: Optional[ProducerStyle] = Field(
-        None,
-        description="Producer style (legacy enum - use producer_name instead)"
+    producer_style: ProducerStyle | None = Field(
+        None, description="Producer style (legacy enum - use producer_name instead)"
     )
-    bars: int = Field(
-        default=4,
-        ge=1,
-        le=32,
-        description="Number of bars to generate (1-32)"
-    )
-    tempo: int = Field(
-        default=120,
-        ge=60,
-        le=200,
-        description="Tempo in BPM (60-200)"
-    )
-    time_signature: Tuple[int, int] = Field(
-        default=(4, 4),
-        description="Time signature as (numerator, denominator)"
+    bars: int = Field(default=4, ge=1, le=32, description="Number of bars to generate (1-32)")
+    tempo: int = Field(default=120, ge=60, le=200, description="Tempo in BPM (60-200)")
+    time_signature: tuple[int, int] = Field(
+        default=(4, 4), description="Time signature as (numerator, denominator)"
     )
     humanize: bool = Field(
-        default=True,
-        description="Apply humanization (timing, velocity, ghost notes)"
+        default=True, description="Apply humanization (timing, velocity, ghost notes)"
     )
-    pattern_type: Optional[str] = Field(
-        default="verse",
-        description="Pattern type (intro, verse, chorus, bridge, outro)"
+    pattern_type: str | None = Field(
+        default="verse", description="Pattern type (intro, verse, chorus, bridge, outro)"
     )
     temperature: float = Field(
         default=1.0,
         ge=0.1,
         le=2.0,
-        description="Sampling temperature (0.1-2.0, lower = more deterministic)"
+        description="Sampling temperature (0.1-2.0, lower = more deterministic)",
     )
-    top_k: int = Field(
-        default=50,
-        ge=0,
-        le=100,
-        description="Top-k sampling parameter"
-    )
-    top_p: float = Field(
-        default=0.9,
-        ge=0.0,
-        le=1.0,
-        description="Nucleus sampling parameter"
-    )
+    top_k: int = Field(default=50, ge=0, le=100, description="Top-k sampling parameter")
+    top_p: float = Field(default=0.9, ge=0.0, le=1.0, description="Nucleus sampling parameter")
 
-    @field_validator('time_signature')
+    @field_validator("time_signature")
     @classmethod
     def validate_time_signature(cls, v):
         """Validate time signature."""
@@ -106,7 +82,7 @@ class PatternGenerationRequest(BaseModel):
                     "pattern_type": "verse",
                     "temperature": 1.0,
                     "top_k": 50,
-                    "top_p": 0.9
+                    "top_p": 0.9,
                 },
                 {
                     "producer_name": "Aphex Twin",
@@ -117,7 +93,7 @@ class PatternGenerationRequest(BaseModel):
                     "pattern_type": "break",
                     "temperature": 1.2,
                     "top_k": 50,
-                    "top_p": 0.9
+                    "top_p": 0.9,
                 },
                 {
                     "producer_style": "J Dilla",
@@ -128,7 +104,7 @@ class PatternGenerationRequest(BaseModel):
                     "pattern_type": "verse",
                     "temperature": 1.0,
                     "top_k": 50,
-                    "top_p": 0.9
-                }
+                    "top_p": 0.9,
+                },
             ]
         }

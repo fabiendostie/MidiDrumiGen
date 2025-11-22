@@ -1,11 +1,16 @@
 """Pytest configuration and shared fixtures."""
 
+import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 import torch
+
+# Add project root to path to resolve imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +133,7 @@ class ProducerResearchAgent:
             "producer_name": producer_name,
             "normalized_name": self.cache._normalize_name(producer_name),
             "cached": False,
-            "cached_at": datetime.utcnow().isoformat() + "Z",
+            "cached_at": datetime.now(UTC).isoformat() + "Z",
             "style_params": style_params,
             "data_sources": {
                 "wikipedia": {
@@ -292,9 +292,7 @@ class ProducerResearchAgent:
 
 
 # Convenience function for quick testing
-async def quick_research(
-    producer_name: str, claude_api_key: str | None = None
-) -> dict[str, Any]:
+async def quick_research(producer_name: str, claude_api_key: str | None = None) -> dict[str, Any]:
     """
     Quick research function for testing.
 

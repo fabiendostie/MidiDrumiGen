@@ -19,6 +19,27 @@ from ...database.manager import DatabaseManager
 router = APIRouter(prefix="/api/v1", tags=["utilities"])
 
 
+async def get_database() -> DatabaseManager:
+    """
+    FastAPI dependency to get database manager instance.
+
+    Returns:
+        DatabaseManager instance
+
+    Note: In production, this should be a singleton
+    managed by the application lifespan context.
+    """
+    # TODO: Get from app state or dependency injection container
+    # For now, this is a placeholder
+    import os
+
+    db = DatabaseManager(database_url=os.getenv("DATABASE_URL"), redis_url=os.getenv("REDIS_URL"))
+    try:
+        yield db
+    finally:
+        await db.close()
+
+
 # =============================================================================
 # Response Models
 # =============================================================================
@@ -125,7 +146,7 @@ async def get_generation_statistics(db: DatabaseManager = Depends(get_database))
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve generation statistics: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/artists/{artist}/history", response_model=ArtistHistoryResponse)
@@ -181,7 +202,9 @@ async def get_artist_generation_history(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve artist history: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve artist history: {str(e)}"
+        ) from e
 
 
 # =============================================================================
@@ -235,7 +258,9 @@ async def get_similar_artists(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to find similar artists: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to find similar artists: {str(e)}"
+        ) from e
 
 
 # =============================================================================
@@ -282,32 +307,6 @@ async def list_artists(
     # TODO: Implement artist listing with pagination
     # This will be completed in Epic 4
     raise HTTPException(status_code=501, detail="Artist listing not yet implemented (Epic 4)")
-
-
-# =============================================================================
-# Dependency Injection
-# =============================================================================
-
-
-async def get_database() -> DatabaseManager:
-    """
-    FastAPI dependency to get database manager instance.
-
-    Returns:
-        DatabaseManager instance
-
-    Note: In production, this should be a singleton
-    managed by the application lifespan context.
-    """
-    # TODO: Get from app state or dependency injection container
-    # For now, this is a placeholder
-    import os
-
-    db = DatabaseManager(database_url=os.getenv("DATABASE_URL"), redis_url=os.getenv("REDIS_URL"))
-    try:
-        yield db
-    finally:
-        await db.close()
 
 
 # TODO: Implement unit tests

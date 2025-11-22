@@ -12,7 +12,7 @@ This script demonstrates the complete Week 2 pipeline:
 import asyncio
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add project root to path
@@ -241,26 +241,26 @@ async def main():
     print("=" * 60 + "\n")
 
     # Configuration
-    NUM_VARIATIONS = 3
-    BARS = 4
-    TEMPO = 100
+    num_variations = 3
+    bars = 4
+    tempo = 100
 
     output_dir = Path("output/timbaland_deliverables")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Configuration:")
-    logger.info(f"  - Number of variations: {NUM_VARIATIONS}")
-    logger.info(f"  - Bars per pattern: {BARS}")
-    logger.info(f"  - Tempo: {TEMPO} BPM")
+    logger.info(f"  - Number of variations: {num_variations}")
+    logger.info(f"  - Bars per pattern: {bars}")
+    logger.info(f"  - Tempo: {tempo} BPM")
     logger.info(f"  - Output directory: {output_dir}\n")
 
     # Generate multiple variations
     results = []
 
-    for i in range(1, NUM_VARIATIONS + 1):
+    for i in range(1, num_variations + 1):
         try:
             midi_path, analysis = await generate_timbaland_pattern(
-                bars=BARS, tempo=TEMPO, variation_num=i, output_dir=output_dir
+                bars=bars, tempo=tempo, variation_num=i, output_dir=output_dir
             )
 
             results.append(
@@ -279,7 +279,7 @@ async def main():
     successful = sum(1 for r in results if r["success"])
     failed = len(results) - successful
 
-    print(f"Total variations requested: {NUM_VARIATIONS}")
+    print(f"Total variations requested: {num_variations}")
     print(f"Successful: {successful}")
     print(f"Failed: {failed}\n")
 
@@ -307,16 +307,16 @@ async def main():
 
     # Save summary JSON
     summary_path = (
-        output_dir / f"generation_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        output_dir / f"generation_summary_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
     )
     import json
 
     summary_data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "configuration": {
-            "num_variations": NUM_VARIATIONS,
-            "bars": BARS,
-            "tempo": TEMPO,
+            "num_variations": num_variations,
+            "bars": bars,
+            "tempo": tempo,
         },
         "results": [
             {
@@ -329,7 +329,7 @@ async def main():
             for r in results
         ],
         "summary": {
-            "total": NUM_VARIATIONS,
+            "total": num_variations,
             "successful": successful,
             "failed": failed,
         },
@@ -340,7 +340,7 @@ async def main():
 
     print(f"Summary saved to: {summary_path}\n")
 
-    return successful == NUM_VARIATIONS
+    return successful == num_variations
 
 
 if __name__ == "__main__":

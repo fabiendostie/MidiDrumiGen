@@ -278,8 +278,6 @@ class ProducerWebScraper:
         """
         logger.info(f"Searching MIDI repositories for: {producer_name}")
 
-        midi_files = []
-
         # Search FreeMIDI (example - actual API/scraping would be needed)
         try:
             # Note: This is a placeholder - actual implementation would need

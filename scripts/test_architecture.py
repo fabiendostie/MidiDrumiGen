@@ -2,23 +2,24 @@
 """Test the complete architecture data flow: API → Redis → Celery → Result."""
 
 import sys
-import os
+import time
 from pathlib import Path
 
-# Fix Windows console encoding
-if sys.platform == 'win32':
+import redis
+import requests
+
+from src.tasks.tasks import generate_pattern
+from src.tasks.worker import celery_app
+
+# Fix Unicode output on Windows
+if sys.platform == "win32":
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-import time
-import requests
-from src.tasks.tasks import generate_pattern
-from src.tasks.worker import celery_app
-import redis
 
 
 def test_redis_connection():
@@ -28,7 +29,7 @@ def test_redis_connection():
     print("=" * 70)
 
     try:
-        r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
         r.ping()
         print("✓ Redis connection successful")
         return True
@@ -43,12 +44,7 @@ def test_celery_task_direct():
     print("2. Testing Direct Celery Task Execution")
     print("=" * 70)
 
-    params = {
-        "producer_style": "J Dilla",
-        "bars": 4,
-        "tempo": 95,
-        "humanize": True
-    }
+    params = {"producer_style": "J Dilla", "bars": 4, "tempo": 95, "humanize": True}
 
     print(f"Queuing task with params: {params}")
 
@@ -70,7 +66,7 @@ def test_celery_task_direct():
     if result.ready():
         if result.successful():
             task_result = result.get()
-            print(f"✓ Task completed successfully")
+            print("✓ Task completed successfully")
             print(f"  Status: {task_result.get('status')}")
             print(f"  MIDI Path: {task_result.get('midi_path')}")
             return True
@@ -136,7 +132,7 @@ def test_celery_inspect():
         for worker, tasks in registered.items():
             print(f"✓ Worker '{worker}' has {len(tasks)} registered tasks")
             for task in tasks:
-                if 'src.tasks' in task:
+                if "src.tasks" in task:
                     print(f"  - {task}")
     else:
         print("⚠ No registered tasks found")

@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -149,7 +149,7 @@ class ProducerStyleCache:
                 # Check if expired
                 cached_at_str = data.get("cached_at", "1970-01-01T00:00:00Z").replace("Z", "+00:00")
                 cached_at = datetime.fromisoformat(cached_at_str)
-                now = datetime.now(cached_at.tzinfo) if cached_at.tzinfo else datetime.utcnow()
+                now = datetime.now(cached_at.tzinfo) if cached_at.tzinfo else datetime.now(UTC)
                 if now - cached_at < self.ttl:
                     logger.debug(f"Cache HIT (file): {normalized}")
                     return data
@@ -179,7 +179,7 @@ class ProducerStyleCache:
             >>> profile = {
             ...     'producer_name': 'Timbaland',
             ...     'style_params': {...},
-            ...     'cached_at': datetime.utcnow().isoformat() + 'Z'
+            ...     'cached_at': datetime.now(timezone.utc).isoformat() + 'Z'
             ... }
             >>> cache.set("timbaland", profile)
         """
@@ -187,7 +187,7 @@ class ProducerStyleCache:
 
         # Ensure cached_at timestamp
         if "cached_at" not in profile:
-            profile["cached_at"] = datetime.utcnow().isoformat() + "Z"
+            profile["cached_at"] = datetime.now(UTC).isoformat() + "Z"
 
         # Ensure normalized name in profile
         if "normalized_name" not in profile:
@@ -272,7 +272,7 @@ class ProducerStyleCache:
                 redis_keys = list(self.redis_client.scan_iter(match=pattern))
                 stats["redis_cache_count"] = len(redis_keys)
                 stats["redis_connected"] = True
-            except:
+            except Exception:
                 stats["redis_connected"] = False
 
         return stats

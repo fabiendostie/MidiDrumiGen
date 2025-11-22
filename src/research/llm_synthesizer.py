@@ -237,7 +237,7 @@ JSON OUTPUT:"""
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON from Claude response: {e}")
             logger.debug(f"Response text: {response_text}")
-            raise ValueError(f"Invalid JSON in Claude response: {e}")
+            raise ValueError(f"Invalid JSON in Claude response: {e}") from e
         except Exception as e:
             logger.error(f"Claude API error: {e}")
             raise

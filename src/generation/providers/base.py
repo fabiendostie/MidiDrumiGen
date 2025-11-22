@@ -79,9 +79,7 @@ class BaseLLMProvider(ABC):
     input_cost_per_1k: float = 0.0
     output_cost_per_1k: float = 0.0
 
-    def __init__(
-        self, model: str | None = None, logger: logging.Logger | None = None
-    ) -> None:
+    def __init__(self, model: str | None = None, logger: logging.Logger | None = None) -> None:
         self.model_name = model or self.default_model
         self.logger = logger or logging.getLogger(self.__class__.__name__)
         self.total_requests: int = 0

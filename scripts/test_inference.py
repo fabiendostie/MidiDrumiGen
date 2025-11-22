@@ -8,46 +8,43 @@ This script tests:
 5. Mock model generation
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
+
+import torch
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import torch
-
-# Import inference modules
-from src.inference.model_loader import (
-    detect_device,
-    get_gpu_memory_info,
-    clear_gpu_cache,
-    load_model,
-    ModelLoadError,
-)
-from src.models.styles import (
-    list_available_styles,
-    get_style_id,
-    get_style_params,
-    get_humanization_params,
-    get_model_path,
-    get_preferred_tempo_range,
-    validate_tempo_for_style,
-    get_style_description,
-    normalize_style_name,
-    StyleNotFoundError,
-)
 from src.inference.mock import (
     MockDrumModel,
     create_mock_checkpoint,
     get_mock_tokens,
 )
+from src.inference.model_loader import (
+    ModelLoadError,
+    clear_gpu_cache,
+    detect_device,
+    get_gpu_memory_info,
+    load_model,
+)
+from src.models.styles import (
+    StyleNotFoundError,
+    get_humanization_params,
+    get_model_path,
+    get_preferred_tempo_range,
+    get_style_id,
+    get_style_params,
+    list_available_styles,
+    normalize_style_name,
+    validate_tempo_for_style,
+)
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -76,7 +73,7 @@ def test_device_detection():
         print(f"Detected device: {device}")
 
         if device == "cuda":
-            print(f"CUDA available: True")
+            print("CUDA available: True")
             print(f"CUDA version: {torch.version.cuda}")
             print(f"Device name: {torch.cuda.get_device_name(0)}")
             print(f"Device count: {torch.cuda.device_count()}")
@@ -84,12 +81,12 @@ def test_device_detection():
             # Test GPU memory info
             gpu_info = get_gpu_memory_info()
             if gpu_info:
-                print(f"GPU Memory Info:")
+                print("GPU Memory Info:")
                 print(f"  - Device: {gpu_info['device_name']}")
                 print(f"  - Allocated: {gpu_info['allocated_gb']:.2f}GB")
                 print(f"  - Reserved: {gpu_info['reserved_gb']:.2f}GB")
         else:
-            print(f"CUDA available: False")
+            print("CUDA available: False")
 
         print_result("Device detection", True, f"Device: {device}")
         return True
@@ -125,7 +122,7 @@ def test_style_registry():
 
                 # Get humanization params
                 humanization = get_humanization_params(style)
-                print(f"  - Humanization:")
+                print("  - Humanization:")
                 print(f"    - Swing: {humanization['swing']}")
                 print(f"    - Micro-timing: {humanization['micro_timing_ms']}ms")
                 print(f"    - Ghost note prob: {humanization['ghost_note_prob']}")
@@ -142,7 +139,7 @@ def test_style_registry():
                 all_passed = False
 
         # Test style name normalization
-        print(f"\nTesting style name normalization:")
+        print("\nTesting style name normalization:")
         test_names = ["j dilla", "J Dilla", "jdilla", "metro", "questlove"]
         for test_name in test_names:
             try:
@@ -174,11 +171,7 @@ def test_model_path_resolution():
 
                 # Check if path is absolute
                 if not model_path.is_absolute():
-                    print_result(
-                        f"Path for {style}",
-                        False,
-                        "Path is not absolute"
-                    )
+                    print_result(f"Path for {style}", False, "Path is not absolute")
                     all_passed = False
                 else:
                     print_result(f"Path for {style}", True)
@@ -204,15 +197,11 @@ def test_missing_model_handling():
 
         try:
             model, metadata = load_model(fake_path)
-            print_result(
-                "Missing model error",
-                False,
-                "Should have raised ModelLoadError"
-            )
+            print_result("Missing model error", False, "Should have raised ModelLoadError")
             return False
 
         except ModelLoadError as e:
-            print(f"Correctly raised ModelLoadError:")
+            print("Correctly raised ModelLoadError:")
             print(f"  {str(e)}")
             print_result("Missing model error", True, "Error handled correctly")
             return True
@@ -248,7 +237,9 @@ def test_mock_model():
         if outputs.logits.shape == expected_shape:
             print_result("Forward pass", True, f"Output shape correct: {outputs.logits.shape}")
         else:
-            print_result("Forward pass", False, f"Expected {expected_shape}, got {outputs.logits.shape}")
+            print_result(
+                "Forward pass", False, f"Expected {expected_shape}, got {outputs.logits.shape}"
+            )
             all_passed = False
 
         # Test generation
@@ -287,7 +278,7 @@ def test_mock_model():
             print("Attempting to load mock checkpoint...")
             try:
                 checkpoint = torch.load(checkpoint_path)
-                print(f"Checkpoint loaded successfully")
+                print("Checkpoint loaded successfully")
                 print(f"Metadata: {checkpoint['metadata']}")
                 print_result("Mock checkpoint", True, "Created and loaded successfully")
             except Exception as e:
@@ -313,8 +304,8 @@ def test_tempo_validation():
     try:
         # Test J Dilla (85-95 BPM)
         test_cases = [
-            ("J Dilla", 90, True),   # In range
-            ("J Dilla", 120, False), # Out of range
+            ("J Dilla", 90, True),  # In range
+            ("J Dilla", 120, False),  # Out of range
             ("Metro Boomin", 140, True),  # In range
             ("Metro Boomin", 90, False),  # Out of range
         ]
@@ -329,7 +320,9 @@ def test_tempo_validation():
             if result == expected:
                 print_result(f"{style} @ {tempo}BPM", True)
             else:
-                print_result(f"{style} @ {tempo}BPM", False, f"Expected {expected_status}, got {status}")
+                print_result(
+                    f"{style} @ {tempo}BPM", False, f"Expected {expected_status}, got {status}"
+                )
                 all_passed = False
 
         return all_passed
@@ -375,9 +368,9 @@ def test_gpu_cache_clearing():
 
 def run_all_tests():
     """Run all Phase 3 tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("PHASE 3 TEST SUITE: Model Loading and Inference")
-    print("="*70)
+    print("=" * 70)
 
     results = {}
 
@@ -391,9 +384,9 @@ def run_all_tests():
     results["GPU Cache Clearing"] = test_gpu_cache_clearing()
 
     # Print summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     passed = sum(1 for result in results.values() if result)
     total = len(results)
