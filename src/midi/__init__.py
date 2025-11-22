@@ -1,2 +1,1 @@
 """MIDI processing utilities."""
-

@@ -40,8 +40,6 @@ def test_generate_pattern():
             def update_state(self, state, meta):
                 logger.info(f"State update: {state} - {meta.get('status', 'N/A')}")
 
-        mock_self = MockTask()
-
         # Test parameters
         params = {
             "producer_style": "J Dilla",
@@ -114,8 +112,6 @@ def test_tokenize_midi():
             def update_state(self, state, meta):
                 logger.info(f"State update: {state} - {meta.get('status', 'N/A')}")
 
-        mock_self = MockTask()
-
         # Call tokenization task
         result = tokenize_midi.apply(
             kwargs={
@@ -169,8 +165,6 @@ def test_multiple_styles():
         try:
             logger.info(f"\nGenerating {style} pattern...")
 
-            mock_self = MockTask(f"test-{style.lower().replace(' ', '-')}")
-
             result = generate_pattern_task.apply(
                 kwargs={
                     "producer_style": style,
@@ -221,8 +215,6 @@ def test_error_handling():
             def update_state(self, state, meta):
                 pass
 
-        mock_self = MockTask()
-
         # This should fail because the task will raise an exception
         generate_pattern_task.apply(
             kwargs={
@@ -251,8 +243,6 @@ def test_error_handling():
 
             def update_state(self, state, meta):
                 pass
-
-        mock_self = MockTask()
 
         # This should fail because the task will raise an exception
         tokenize_midi.apply(

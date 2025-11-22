@@ -1,0 +1,55 @@
+{
+  "semantic_scholar_response": {
+    "data": [
+      {
+        "paperId": "abc123",
+        "title": "Analysis of J Dilla's Rhythmic Patterns",
+        "abstract": "This paper analyzes the unique swing feel in J Dilla's production, typically ranging from 88 BPM to 98 BPM with heavy syncopation.",
+        "authors": [
+          {"name": "John Smith"},
+          {"name": "Jane Doe"}
+        ],
+        "citationCount": 150,
+        "year": 2021,
+        "url": "https://semanticscholar.org/paper/abc123"
+      },
+      {
+        "paperId": "def456",
+        "title": "Computational Analysis of Drum Patterns",
+        "abstract": "A machine learning approach to drum pattern analysis at 120 BPM.",
+        "authors": [
+          {"name": "Alice Johnson"}
+        ],
+        "citationCount": 50,
+        "year": 2019,
+        "url": "https://semanticscholar.org/paper/def456"
+      }
+    ]
+  },
+  "arxiv_response": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:arxiv=\"http://arxiv.org/schemas/atom\">\n  <entry>\n    <id>http://arxiv.org/abs/2023.12345</id>\n    <title>Neural Networks for Drum Pattern Generation</title>\n    <summary>We present a neural network approach for generating realistic drum patterns at tempos between 80 BPM and 160 BPM.</summary>\n    <author><name>Robert Chen</name></author>\n    <author><name>Maria Garcia</name></author>\n    <published>2023-06-15T00:00:00Z</published>\n  </entry>\n</feed>",
+  "crossref_response": {
+    "message": {
+      "items": [
+        {
+          "DOI": "10.1234/example.2022",
+          "title": ["Rhythmic Complexity in Jazz Drumming"],
+          "abstract": "An analysis of jazz drummers including patterns at 140 BPM and 180 beats per minute.",
+          "is-referenced-by-count": 25,
+          "author": [
+            {"given": "Michael", "family": "Brown"},
+            {"given": "Sarah", "family": "Wilson"}
+          ],
+          "published-print": {
+            "date-parts": [[2022, 3, 15]]
+          },
+          "URL": "https://doi.org/10.1234/example.2022"
+        }
+      ]
+    }
+  },
+  "empty_responses": {
+    "semantic_scholar": {"data": []},
+    "arxiv": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\"></feed>",
+    "crossref": {"message": {"items": []}}
+  }
+}

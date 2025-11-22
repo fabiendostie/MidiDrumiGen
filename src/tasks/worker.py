@@ -2,13 +2,13 @@
 
 import logging
 import os
+
 from celery import Celery
-from celery.signals import worker_ready, worker_shutdown, task_prerun, task_postrun
+from celery.signals import task_postrun, task_prerun, worker_ready, worker_shutdown
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -18,18 +18,18 @@ REDIS_BACKEND = os.getenv("REDIS_BACKEND", "redis://localhost:6379/1")
 
 # Create Celery app
 celery_app = Celery(
-    'drum_generator',
+    "drum_generator",
     broker=REDIS_URL,
     backend=REDIS_BACKEND,
-    include=['src.tasks.tasks']  # Auto-discover tasks
+    include=["src.tasks.tasks"],  # Auto-discover tasks
 )
 
 # Celery configuration
 celery_app.conf.update(
-    task_serializer='json',
-    result_serializer='json',
-    accept_content=['json'],
-    timezone='UTC',
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+    timezone="UTC",
     enable_utc=True,
     task_track_started=True,
     task_time_limit=300,  # 5 minutes max per task
@@ -43,9 +43,9 @@ celery_app.conf.update(
 
 # Task routes
 celery_app.conf.task_routes = {
-    'src.tasks.tasks.generate_pattern': {'queue': 'gpu_generation'},
-    'src.tasks.tasks.tokenize_midi': {'queue': 'midi_processing'},
-    'src.tasks.tasks.train_model': {'queue': 'heavy_tasks'},
+    "src.tasks.tasks.generate_pattern": {"queue": "gpu_generation"},
+    "src.tasks.tasks.tokenize_midi": {"queue": "midi_processing"},
+    "src.tasks.tasks.train_model": {"queue": "heavy_tasks"},
 }
 
 
@@ -74,4 +74,3 @@ def on_task_prerun(sender=None, task_id=None, task=None, **kwargs):
 def on_task_postrun(sender=None, task_id=None, task=None, state=None, **kwargs):
     """Log after task execution."""
     logger.info(f"← Completed task: {task.name} [{task_id}] - {state}")
-

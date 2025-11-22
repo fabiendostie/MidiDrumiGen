@@ -440,7 +440,7 @@ def apply_complexity_boost(
     new_notes = notes.copy()
 
     # Add occasional hi-hat hits between existing notes
-    HI_HAT_CLOSED = 42
+    hi_hat_closed = 42
     fill_probability = 0.1  # 10% chance per gap
 
     sorted_notes = sorted(notes, key=lambda n: n["time"])
@@ -448,18 +448,17 @@ def apply_complexity_boost(
     for i in range(len(sorted_notes) - 1):
         gap = sorted_notes[i + 1]["time"] - sorted_notes[i]["time"]
 
-        # If gap is large enough, consider adding fill
-        if gap >= ticks_per_beat / 4:  # At least 16th note gap
-            if random.random() < fill_probability:
-                # Add hi-hat in the middle of the gap
-                fill_time = (sorted_notes[i]["time"] + sorted_notes[i + 1]["time"]) // 2
-                new_notes.append(
-                    {
-                        "pitch": HI_HAT_CLOSED,
-                        "velocity": random.randint(40, 60),
-                        "time": fill_time,
-                    }
-                )
+        # If gap is large enough and random check passes, consider adding fill
+        if gap >= ticks_per_beat / 4 and random.random() < fill_probability:
+            # Add hi-hat in the middle of the gap
+            fill_time = (sorted_notes[i]["time"] + sorted_notes[i + 1]["time"]) // 2
+            new_notes.append(
+                {
+                    "pitch": hi_hat_closed,
+                    "velocity": random.randint(40, 60),
+                    "time": fill_time,
+                }
+            )
 
     return new_notes
 

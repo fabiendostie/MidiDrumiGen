@@ -11,12 +11,12 @@ MidiDrumiGen is an intelligent Max for Live device that generates authentic drum
 
 ### Key Features
 
-✨ **Universal Style Emulation** - Input any producer or band name and generate patterns matching their style  
-🔍 **Comprehensive Research** - Analyzes scholarly papers, MIDI databases, audio features, and web articles  
-🤖 **Multi-Provider LLM** - Uses OpenAI GPT-4, Claude, or Gemini for intelligent generation  
-⚡ **Fast Generation** - Creates patterns in under 2 minutes  
-💾 **Smart Caching** - Builds a database of researched artists for instant re-use  
-🎛️ **Max for Live Integration** - Native Ableton Live device with intuitive UI  
+✨ **Universal Style Emulation** - Input any producer or band name and generate patterns matching their style
+🔍 **Comprehensive Research** - Analyzes scholarly papers, MIDI databases, audio features, and web articles
+🤖 **Multi-Provider LLM** - Uses OpenAI GPT-4, Claude, or Gemini for intelligent generation
+⚡ **Fast Generation** - Creates patterns in under 2 minutes
+💾 **Smart Caching** - Builds a database of researched artists for instant re-use
+🎛️ **Max for Live Integration** - Native Ableton Live device with intuitive UI
 📊 **Style Augmentation** - Continuously improves style profiles with more data
 
 ---

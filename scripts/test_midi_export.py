@@ -7,8 +7,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.midi.export import export_pattern
-from src.midi.validate import validate_drum_pattern, get_pattern_statistics
 from src.midi.humanize import apply_style_humanization
+from src.midi.validate import get_pattern_statistics, validate_drum_pattern
 
 
 def create_sample_pattern() -> list:
@@ -23,45 +23,35 @@ def create_sample_pattern() -> list:
         bar_offset = bar * 4 * ticks_per_beat
 
         # Kicks on beats 1 and 3
-        notes.append({
-            'pitch': 36,  # Kick
-            'velocity': 100,
-            'time': bar_offset
-        })
-        notes.append({
-            'pitch': 36,  # Kick
-            'velocity': 95,
-            'time': bar_offset + 2 * ticks_per_beat
-        })
+        notes.append({"pitch": 36, "velocity": 100, "time": bar_offset})  # Kick
+        notes.append({"pitch": 36, "velocity": 95, "time": bar_offset + 2 * ticks_per_beat})  # Kick
 
         # Snare on beats 2 and 4
-        notes.append({
-            'pitch': 38,  # Snare
-            'velocity': 90,
-            'time': bar_offset + 1 * ticks_per_beat
-        })
-        notes.append({
-            'pitch': 38,  # Snare
-            'velocity': 92,
-            'time': bar_offset + 3 * ticks_per_beat
-        })
+        notes.append(
+            {"pitch": 38, "velocity": 90, "time": bar_offset + 1 * ticks_per_beat}  # Snare
+        )
+        notes.append(
+            {"pitch": 38, "velocity": 92, "time": bar_offset + 3 * ticks_per_beat}  # Snare
+        )
 
         # Hi-hats on every 8th note
         for eighth in range(8):
-            notes.append({
-                'pitch': 42,  # Closed hi-hat
-                'velocity': 70 + (eighth % 2) * 10,  # Accent on downbeats
-                'time': bar_offset + eighth * (ticks_per_beat // 2)
-            })
+            notes.append(
+                {
+                    "pitch": 42,  # Closed hi-hat
+                    "velocity": 70 + (eighth % 2) * 10,  # Accent on downbeats
+                    "time": bar_offset + eighth * (ticks_per_beat // 2),
+                }
+            )
 
     return notes
 
 
 def test_validation():
     """Test pattern validation."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 1: Pattern Validation")
-    print("="*60)
+    print("=" * 60)
 
     # Create sample pattern
     notes = create_sample_pattern()
@@ -80,7 +70,7 @@ def test_validation():
 
     # Get statistics
     stats = get_pattern_statistics(notes)
-    print(f"\nPattern Statistics:")
+    print("\nPattern Statistics:")
     print(f"  Total notes: {stats['total_notes']}")
     print(f"  Unique pitches: {stats['unique_pitches']}")
     print(f"  Duration: {stats['duration_beats']:.1f} beats")
@@ -92,9 +82,9 @@ def test_validation():
 
 def test_humanization():
     """Test humanization algorithms."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 2: Humanization")
-    print("="*60)
+    print("=" * 60)
 
     notes = create_sample_pattern()
     print(f"\nOriginal pattern: {len(notes)} notes")
@@ -105,7 +95,7 @@ def test_humanization():
     for style in styles:
         humanized = apply_style_humanization(notes, style, tempo=95)
         print(f"\n{style} humanization: {len(humanized)} notes")
-        print(f"  (Ghost notes may have been added)")
+        print("  (Ghost notes may have been added)")
 
     print("\n[PASS] Humanization test PASSED")
     return True
@@ -113,9 +103,9 @@ def test_humanization():
 
 def test_export():
     """Test MIDI export."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 3: MIDI Export")
-    print("="*60)
+    print("=" * 60)
 
     # Create output directory
     output_dir = Path("output/test_patterns")
@@ -128,12 +118,7 @@ def test_export():
     output_path1 = output_dir / "test_pattern_no_humanize.mid"
     try:
         result_path1 = export_pattern(
-            notes,
-            output_path1,
-            tempo=95,
-            time_signature=(4, 4),
-            humanize=False,
-            style_name="Test"
+            notes, output_path1, tempo=95, time_signature=(4, 4), humanize=False, style_name="Test"
         )
         print(f"[PASS] Exported to: {result_path1}")
         print(f"       File size: {result_path1.stat().st_size} bytes")
@@ -151,7 +136,7 @@ def test_export():
             tempo=95,
             time_signature=(4, 4),
             humanize=True,
-            style_name="J Dilla"
+            style_name="J Dilla",
         )
         print(f"[PASS] Exported to: {result_path2}")
         print(f"       File size: {result_path2.stat().st_size} bytes")
@@ -169,7 +154,7 @@ def test_export():
             tempo=140,
             time_signature=(4, 4),
             humanize=True,
-            style_name="Metro Boomin"
+            style_name="Metro Boomin",
         )
         print(f"[PASS] Exported to: {result_path3}")
         print(f"       File size: {result_path3.stat().st_size} bytes")
@@ -183,13 +168,13 @@ def test_export():
 
 def test_invalid_patterns():
     """Test validation with invalid patterns."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 4: Invalid Pattern Detection")
-    print("="*60)
+    print("=" * 60)
 
     # Test 1: Invalid note range
     print("\nTest 4.1: Invalid note range")
-    invalid_notes1 = [{'pitch': 200, 'velocity': 100, 'time': 0}]
+    invalid_notes1 = [{"pitch": 200, "velocity": 100, "time": 0}]
     is_valid, errors = validate_drum_pattern(invalid_notes1)
     if not is_valid:
         print(f"[PASS] Correctly detected invalid note: {errors[0]}")
@@ -199,7 +184,7 @@ def test_invalid_patterns():
 
     # Test 2: Invalid velocity
     print("\nTest 4.2: Invalid velocity")
-    invalid_notes2 = [{'pitch': 36, 'velocity': 200, 'time': 0}]
+    invalid_notes2 = [{"pitch": 36, "velocity": 200, "time": 0}]
     is_valid, errors = validate_drum_pattern(invalid_notes2)
     if not is_valid:
         print(f"[PASS] Correctly detected invalid velocity: {errors[0]}")
@@ -210,8 +195,8 @@ def test_invalid_patterns():
     # Test 3: Impossible simultaneous hits
     print("\nTest 4.3: Impossible simultaneous hits (closed + open hi-hat)")
     invalid_notes3 = [
-        {'pitch': 42, 'velocity': 100, 'time': 0},  # Closed hi-hat
-        {'pitch': 46, 'velocity': 100, 'time': 0},  # Open hi-hat (same time)
+        {"pitch": 42, "velocity": 100, "time": 0},  # Closed hi-hat
+        {"pitch": 46, "velocity": 100, "time": 0},  # Open hi-hat (same time)
     ]
     is_valid, errors = validate_drum_pattern(invalid_notes3)
     if not is_valid:
@@ -226,9 +211,9 @@ def test_invalid_patterns():
 
 def main():
     """Run all tests."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("MIDI EXPORT PIPELINE TEST SUITE")
-    print("="*60)
+    print("=" * 60)
 
     tests = [
         ("Validation", test_validation),
@@ -245,13 +230,14 @@ def main():
         except Exception as e:
             print(f"\n[FAIL] {test_name} test CRASHED: {e}")
             import traceback
+
             traceback.print_exc()
             results.append((test_name, False))
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     passed = sum(1 for _, result in results if result)
     total = len(results)

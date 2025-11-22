@@ -1,18 +1,20 @@
 """Celery task definitions."""
 
-from celery import Task
-from src.tasks.worker import celery_app
 import logging
-from pathlib import Path
-from datetime import datetime
 import time
+from pathlib import Path
+
+import torch
+from celery import Task
+
+from src.tasks.worker import celery_app
 
 logger = logging.getLogger(__name__)
 
 
 @celery_app.task(
     bind=True,
-    name='src.tasks.tasks.generate_pattern',
+    name="src.tasks.tasks.generate_pattern",
     max_retries=3,
     default_retry_delay=60,
     autoretry_for=(Exception,),
@@ -84,16 +86,15 @@ def generate_pattern_task(
     try:
         # Update task state: Starting
         self.update_state(
-            state='PROGRESS',
-            meta={'progress': 5, 'status': 'Validating parameters...'}
+            state="PROGRESS", meta={"progress": 5, "status": "Validating parameters..."}
         )
 
         # Determine producer name and style profile
         use_dynamic_style = style_profile is not None
-        
+
         if use_dynamic_style:
             # Week 2: Dynamic producer with researched style
-            actual_producer_name = producer_name or style_profile.get('producer_name', 'Unknown')
+            actual_producer_name = producer_name or style_profile.get("producer_name", "Unknown")
             logger.info(
                 f"Task {self.request.id}: Generating {bars} bars of {actual_producer_name} "
                 f"@ {tempo} BPM using dynamic style transfer "
@@ -110,11 +111,11 @@ def generate_pattern_task(
         # For legacy mode or fallback, normalize style name
         if not use_dynamic_style or not style_profile:
             from src.models.styles import (
-                normalize_style_name,
-                get_numeric_style_id,
+                StyleNotFoundError,
                 get_model_path,
+                get_numeric_style_id,
+                normalize_style_name,
                 validate_tempo_for_style,
-                StyleNotFoundError
             )
 
             try:
@@ -132,8 +133,8 @@ def generate_pattern_task(
 
         # Update task state: Loading model
         self.update_state(
-            state='PROGRESS',
-            meta={'progress': 15, 'status': f'Loading {normalized_style} model...'}
+            state="PROGRESS",
+            meta={"progress": 15, "status": f"Loading {normalized_style} model..."},
         )
 
         # Get model path and numeric style ID
@@ -144,11 +145,10 @@ def generate_pattern_task(
 
         # Load model with GPU/CPU fallback
         from src.inference.model_loader import (
-            load_model,
-            detect_device,
             clear_gpu_cache,
+            detect_device,
             get_gpu_memory_info,
-            ModelLoadError
+            load_model,
         )
 
         try:
@@ -159,7 +159,7 @@ def generate_pattern_task(
             if model_path.exists():
                 logger.info(f"Loading trained model from {model_path}")
                 model, metadata = load_model(model_path, device=device)
-                device = metadata['device']  # May have fallen back to CPU
+                device = metadata["device"]  # May have fallen back to CPU
             else:
                 # Model doesn't exist yet - use mock model
                 logger.warning(
@@ -168,14 +168,11 @@ def generate_pattern_task(
                     "Trained models will be available after Phase 6 (Training)."
                 )
                 from src.inference.mock import MockDrumModel
+
                 model = MockDrumModel()
                 model.to(device)
                 model.eval()
-                metadata = {
-                    'vocab_size': 500,
-                    'device': device,
-                    'model_type': 'mock'
-                }
+                metadata = {"vocab_size": 500, "device": device, "model_type": "mock"}
 
         except torch.cuda.OutOfMemoryError:
             logger.warning("GPU OOM during model loading, falling back to CPU")
@@ -187,10 +184,11 @@ def generate_pattern_task(
                 model, metadata = load_model(model_path, device="cpu")
             else:
                 from src.inference.mock import MockDrumModel
+
                 model = MockDrumModel()
                 model.to("cpu")
                 model.eval()
-                metadata = {'vocab_size': 500, 'device': 'cpu', 'model_type': 'mock'}
+                metadata = {"vocab_size": 500, "device": "cpu", "model_type": "mock"}
 
         logger.info(f"Model loaded on {device}")
 
@@ -204,18 +202,13 @@ def generate_pattern_task(
 
         # Update task state: Generating
         self.update_state(
-            state='PROGRESS',
-            meta={
-                'progress': 40,
-                'status': f'Generating {bars}-bar pattern...',
-                'device': device
-            }
+            state="PROGRESS",
+            meta={"progress": 40, "status": f"Generating {bars}-bar pattern...", "device": device},
         )
 
         # Generate pattern tokens
-        from src.inference.generate import generate_pattern, GenerationError
+        from src.inference.generate import generate_pattern
 
-        import torch
         try:
             # Calculate max tokens needed (rough estimate)
             tokens_per_bar = 64  # Approximate for 16th note resolution
@@ -235,7 +228,7 @@ def generate_pattern_task(
                 top_p=top_p,
                 max_length=max_length,
                 device=device,
-                style_id=style_id
+                style_id=style_id,
             )
 
             logger.info(f"Generated {len(tokens)} tokens successfully")
@@ -257,15 +250,14 @@ def generate_pattern_task(
                 top_p=top_p,
                 max_length=max_length,
                 device="cpu",
-                style_id=style_id
+                style_id=style_id,
             )
 
             logger.info(f"Generated {len(tokens)} tokens on CPU (GPU fallback)")
 
         # Update task state: Converting to MIDI
         self.update_state(
-            state='PROGRESS',
-            meta={'progress': 65, 'status': 'Converting to MIDI notes...'}
+            state="PROGRESS", meta={"progress": 65, "status": "Converting to MIDI notes..."}
         )
 
         # TODO: When tokenizer is implemented, use:
@@ -282,45 +274,34 @@ def generate_pattern_task(
             base_tick = bar * beats_per_bar * ticks_per_beat
 
             # Kick on beats 1 and 3
-            notes.append({'pitch': 36, 'velocity': 100, 'time': base_tick})
+            notes.append({"pitch": 36, "velocity": 100, "time": base_tick})
             if beats_per_bar >= 3:
-                notes.append({
-                    'pitch': 36,
-                    'velocity': 95,
-                    'time': base_tick + 2 * ticks_per_beat
-                })
+                notes.append({"pitch": 36, "velocity": 95, "time": base_tick + 2 * ticks_per_beat})
 
             # Snare on beats 2 and 4
             if beats_per_bar >= 2:
-                notes.append({
-                    'pitch': 38,
-                    'velocity': 90,
-                    'time': base_tick + ticks_per_beat
-                })
+                notes.append({"pitch": 38, "velocity": 90, "time": base_tick + ticks_per_beat})
             if beats_per_bar >= 4:
-                notes.append({
-                    'pitch': 38,
-                    'velocity': 92,
-                    'time': base_tick + 3 * ticks_per_beat
-                })
+                notes.append({"pitch": 38, "velocity": 92, "time": base_tick + 3 * ticks_per_beat})
 
             # Hi-hats on 8th notes
             eighths_per_bar = beats_per_bar * 2
             for eighth in range(eighths_per_bar):
                 velocity = 70 if eighth % 2 == 0 else 60
-                notes.append({
-                    'pitch': 42,
-                    'velocity': velocity,
-                    'time': base_tick + eighth * (ticks_per_beat // 2)
-                })
+                notes.append(
+                    {
+                        "pitch": 42,
+                        "velocity": velocity,
+                        "time": base_tick + eighth * (ticks_per_beat // 2),
+                    }
+                )
 
         logger.debug(f"Created {len(notes)} MIDI notes")
 
         # Apply humanization/style transfer if enabled
         if humanize:
             self.update_state(
-                state='PROGRESS',
-                meta={'progress': 80, 'status': 'Applying style transfer...'}
+                state="PROGRESS", meta={"progress": 80, "status": "Applying style transfer..."}
             )
 
             if use_dynamic_style and style_profile:
@@ -331,7 +312,7 @@ def generate_pattern_task(
                     notes=notes,
                     style_profile=style_profile,
                     tempo=tempo,
-                    ticks_per_beat=ticks_per_beat
+                    ticks_per_beat=ticks_per_beat,
                 )
 
                 style_desc = get_style_description(style_profile)
@@ -341,18 +322,14 @@ def generate_pattern_task(
                 from src.midi.humanize import apply_style_humanization
 
                 notes = apply_style_humanization(
-                    notes=notes,
-                    style=normalized_style,
-                    tempo=tempo,
-                    ticks_per_beat=ticks_per_beat
+                    notes=notes, style=normalized_style, tempo=tempo, ticks_per_beat=ticks_per_beat
                 )
 
                 logger.info(f"Applied {normalized_style}-style humanization (legacy mode)")
 
         # Update task state: Exporting
         self.update_state(
-            state='PROGRESS',
-            meta={'progress': 90, 'status': 'Exporting MIDI file...'}
+            state="PROGRESS", meta={"progress": 90, "status": "Exporting MIDI file..."}
         )
 
         # Export to MIDI file
@@ -360,7 +337,7 @@ def generate_pattern_task(
 
         # Create unique filename with task ID
         task_id = self.request.id
-        safe_producer = actual_producer_name.lower().replace(' ', '_').replace('.', '')
+        safe_producer = actual_producer_name.lower().replace(" ", "_").replace(".", "")
         filename = f"{task_id}_{safe_producer}_{bars}bars_{tempo}bpm.mid"
         output_path = Path("output/patterns") / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -374,7 +351,7 @@ def generate_pattern_task(
             time_signature=time_signature,
             humanize=False,  # Already humanized/styled above
             style_name=actual_producer_name,
-            ticks_per_beat=ticks_per_beat
+            ticks_per_beat=ticks_per_beat,
         )
 
         # Calculate final metrics
@@ -384,7 +361,7 @@ def generate_pattern_task(
         gpu_memory_mb = None
         if device == "cuda":
             gpu_info = get_gpu_memory_info()
-            gpu_memory_mb = gpu_info.get('allocated_gb', 0) * 1024
+            gpu_memory_mb = gpu_info.get("allocated_gb", 0) * 1024
 
         # Clean up GPU cache
         if device == "cuda":
@@ -394,6 +371,7 @@ def generate_pattern_task(
         style_description = "Legacy fixed style"
         if use_dynamic_style and style_profile:
             from src.midi.style_transfer import get_style_description
+
             style_description = get_style_description(style_profile)
 
         logger.info(
@@ -403,20 +381,20 @@ def generate_pattern_task(
 
         # Return success result
         return {
-            'midi_file': str(midi_path.resolve()),
-            'duration_seconds': round(duration, 3),
-            'tokens_generated': len(tokens),
-            'notes_count': len(notes),
-            'producer_name': actual_producer_name,
-            'style_description': style_description,
-            'bars': bars,
-            'tempo': tempo,
-            'time_signature': time_signature,
-            'device': device,
-            'gpu_memory_mb': gpu_memory_mb,
-            'humanized': humanize,
-            'style_transfer_mode': 'dynamic' if use_dynamic_style else 'legacy',
-            'model_type': metadata.get('model_type', 'unknown'),
+            "midi_file": str(midi_path.resolve()),
+            "duration_seconds": round(duration, 3),
+            "tokens_generated": len(tokens),
+            "notes_count": len(notes),
+            "producer_name": actual_producer_name,
+            "style_description": style_description,
+            "bars": bars,
+            "tempo": tempo,
+            "time_signature": time_signature,
+            "device": device,
+            "gpu_memory_mb": gpu_memory_mb,
+            "humanized": humanize,
+            "style_transfer_mode": "dynamic" if use_dynamic_style else "legacy",
+            "model_type": metadata.get("model_type", "unknown"),
         }
 
     except Exception as exc:
@@ -427,18 +405,19 @@ def generate_pattern_task(
         # Clean up GPU if we allocated it
         if device == "cuda":
             from src.inference.model_loader import clear_gpu_cache
+
             clear_gpu_cache()
 
         # Update task state to failure
         self.update_state(
-            state='FAILURE',
+            state="FAILURE",
             meta={
-                'error': str(exc),
-                'error_type': type(exc).__name__,
-                'progress': 0,
-                'status': 'Failed',
-                'duration_seconds': round(duration, 3),
-            }
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "progress": 0,
+                "status": "Failed",
+                "duration_seconds": round(duration, 3),
+            },
         )
 
         # Re-raise for Celery retry mechanism
@@ -447,7 +426,7 @@ def generate_pattern_task(
 
 @celery_app.task(
     bind=True,
-    name='src.tasks.tasks.tokenize_midi',
+    name="src.tasks.tasks.tokenize_midi",
     max_retries=3,
     default_retry_delay=30,
 )
@@ -484,10 +463,7 @@ def tokenize_midi(
     start_time = time.time()
 
     try:
-        self.update_state(
-            state='PROGRESS',
-            meta={'progress': 10, 'status': 'Loading MIDI file...'}
-        )
+        self.update_state(state="PROGRESS", meta={"progress": 10, "status": "Loading MIDI file..."})
 
         logger.info(f"Task {self.request.id}: Tokenizing MIDI: {midi_path}")
 
@@ -497,25 +473,25 @@ def tokenize_midi(
             raise FileNotFoundError(f"MIDI file not found: {midi_path}")
 
         # Load MIDI file
-        from src.midi.io import read_midi_file
         import mido
+
+        from src.midi.io import read_midi_file
 
         try:
             mid = read_midi_file(midi_path)
             logger.debug(f"Loaded MIDI: {len(mid.tracks)} tracks, {mid.ticks_per_beat} ticks/beat")
         except Exception as e:
-            raise ValueError(f"Failed to load MIDI file: {e}")
+            raise ValueError(f"Failed to load MIDI file: {e}") from e
 
         # Extract metadata from MIDI
         self.update_state(
-            state='PROGRESS',
-            meta={'progress': 25, 'status': 'Extracting metadata...'}
+            state="PROGRESS", meta={"progress": 25, "status": "Extracting metadata..."}
         )
 
         metadata = {
-            'ticks_per_beat': mid.ticks_per_beat,
-            'num_tracks': len(mid.tracks),
-            'type': mid.type,
+            "ticks_per_beat": mid.ticks_per_beat,
+            "num_tracks": len(mid.tracks),
+            "type": mid.type,
         }
 
         # Extract tempo and time signature from first track
@@ -523,21 +499,21 @@ def tokenize_midi(
         time_signature = (4, 4)  # Default
 
         for msg in mid.tracks[0]:
-            if msg.type == 'set_tempo':
+            if msg.type == "set_tempo":
                 tempo_bpm = mido.tempo2bpm(msg.tempo)
-                metadata['tempo'] = tempo_bpm
-            elif msg.type == 'time_signature':
+                metadata["tempo"] = tempo_bpm
+            elif msg.type == "time_signature":
                 time_signature = (msg.numerator, msg.denominator)
-                metadata['time_signature'] = time_signature
+                metadata["time_signature"] = time_signature
 
         logger.debug(f"MIDI metadata: {tempo_bpm} BPM, {time_signature[0]}/{time_signature[1]}")
 
         # Count total notes
         total_notes = 0
         for track in mid.tracks:
-            total_notes += sum(1 for msg in track if msg.type == 'note_on' and msg.velocity > 0)
+            total_notes += sum(1 for msg in track if msg.type == "note_on" and msg.velocity > 0)
 
-        metadata['total_notes'] = total_notes
+        metadata["total_notes"] = total_notes
 
         if total_notes == 0:
             raise ValueError("MIDI file contains no notes")
@@ -545,10 +521,7 @@ def tokenize_midi(
         logger.debug(f"Found {total_notes} notes in MIDI")
 
         # Tokenize MIDI
-        self.update_state(
-            state='PROGRESS',
-            meta={'progress': 50, 'status': 'Tokenizing MIDI...'}
-        )
+        self.update_state(state="PROGRESS", meta={"progress": 50, "status": "Tokenizing MIDI..."})
 
         # TODO: Integrate MidiTok REMI tokenizer when available
         # For now, create a placeholder token representation
@@ -570,37 +543,36 @@ def tokenize_midi(
         logger.debug(f"Generated {num_tokens} tokens (placeholder)")
 
         # Save tokens to disk
-        self.update_state(
-            state='PROGRESS',
-            meta={'progress': 75, 'status': 'Saving tokens...'}
-        )
+        self.update_state(state="PROGRESS", meta={"progress": 75, "status": "Saving tokens..."})
 
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create safe filename from style and MIDI filename
-        safe_style = style_name.lower().replace(' ', '_')
+        safe_style = style_name.lower().replace(" ", "_")
         midi_stem = midi_path.stem
         token_filename = f"{safe_style}_{midi_stem}_tokens.pt"
         token_path = output_dir / token_filename
 
         # Save tokens as PyTorch tensor
         import torch
+
         torch.save(torch.tensor(tokens, dtype=torch.long), token_path)
 
         logger.debug(f"Saved tokens to {token_path}")
 
         # Also save metadata JSON
-        metadata_path = token_path.with_suffix('.json')
+        metadata_path = token_path.with_suffix(".json")
         import json
+
         metadata_full = {
             **metadata,
-            'style': style_name,
-            'midi_file': str(midi_path),
-            'num_tokens': num_tokens,
+            "style": style_name,
+            "midi_file": str(midi_path),
+            "num_tokens": num_tokens,
         }
 
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(metadata_full, f, indent=2)
 
         logger.debug(f"Saved metadata to {metadata_path}")
@@ -614,36 +586,32 @@ def tokenize_midi(
         )
 
         return {
-            'token_file': str(token_path.resolve()),
-            'metadata_file': str(metadata_path.resolve()),
-            'num_tokens': num_tokens,
-            'midi_file': str(midi_path),
-            'style': style_name,
-            'duration_seconds': round(duration, 3),
-            'metadata': metadata_full,
+            "token_file": str(token_path.resolve()),
+            "metadata_file": str(metadata_path.resolve()),
+            "num_tokens": num_tokens,
+            "midi_file": str(midi_path),
+            "style": style_name,
+            "duration_seconds": round(duration, 3),
+            "metadata": metadata_full,
         }
 
     except FileNotFoundError as e:
         logger.error(f"MIDI file not found: {e}")
         self.update_state(
-            state='FAILURE',
+            state="FAILURE",
             meta={
-                'error': str(e),
-                'error_type': 'FileNotFoundError',
-                'status': 'Failed - file not found'
-            }
+                "error": str(e),
+                "error_type": "FileNotFoundError",
+                "status": "Failed - file not found",
+            },
         )
         raise
 
     except ValueError as e:
         logger.error(f"Invalid MIDI file: {e}")
         self.update_state(
-            state='FAILURE',
-            meta={
-                'error': str(e),
-                'error_type': 'ValueError',
-                'status': 'Failed - invalid MIDI'
-            }
+            state="FAILURE",
+            meta={"error": str(e), "error_type": "ValueError", "status": "Failed - invalid MIDI"},
         )
         raise
 
@@ -652,13 +620,13 @@ def tokenize_midi(
         logger.error(f"Tokenization failed after {duration:.2f}s: {exc}", exc_info=True)
 
         self.update_state(
-            state='FAILURE',
+            state="FAILURE",
             meta={
-                'error': str(exc),
-                'error_type': type(exc).__name__,
-                'status': 'Failed',
-                'duration_seconds': round(duration, 3),
-            }
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "status": "Failed",
+                "duration_seconds": round(duration, 3),
+            },
         )
 
         raise
@@ -666,7 +634,7 @@ def tokenize_midi(
 
 @celery_app.task(
     bind=True,
-    name='src.tasks.tasks.tokenize_midi_batch',
+    name="src.tasks.tasks.tokenize_midi_batch",
 )
 def tokenize_midi_batch(
     self: Task,
@@ -708,19 +676,19 @@ def tokenize_midi_batch(
             # Update progress
             progress = int((idx / total_files) * 100)
             self.update_state(
-                state='PROGRESS',
+                state="PROGRESS",
                 meta={
-                    'progress': progress,
-                    'status': f'Processing file {idx+1}/{total_files}',
-                    'current_file': midi_file,
-                    'successful': successful,
-                    'failed': failed,
-                }
+                    "progress": progress,
+                    "status": f"Processing file {idx+1}/{total_files}",
+                    "current_file": midi_file,
+                    "successful": successful,
+                    "failed": failed,
+                },
             )
 
             # Tokenize this file
             result = tokenize_midi(midi_file, output_dir, style_name)
-            token_files.append(result['token_file'])
+            token_files.append(result["token_file"])
             successful += 1
 
             logger.debug(f"✓ Tokenized {idx+1}/{total_files}: {midi_file}")
@@ -739,18 +707,18 @@ def tokenize_midi_batch(
     )
 
     return {
-        'total_files': total_files,
-        'successful': successful,
-        'failed': failed,
-        'token_files': token_files,
-        'errors': errors,
-        'duration_seconds': round(duration, 3),
+        "total_files": total_files,
+        "successful": successful,
+        "failed": failed,
+        "token_files": token_files,
+        "errors": errors,
+        "duration_seconds": round(duration, 3),
     }
 
 
 @celery_app.task(
     bind=True,
-    name='src.tasks.tasks.train_model',
+    name="src.tasks.tasks.train_model",
 )
 def train_model(self: Task, config_path: str) -> dict:
     """
@@ -781,12 +749,12 @@ def train_model(self: Task, config_path: str) -> dict:
     )
 
     self.update_state(
-        state='PROGRESS',
+        state="PROGRESS",
         meta={
-            'progress': 0,
-            'status': 'Training not implemented yet (Phase 6)',
-            'config': config_path
-        }
+            "progress": 0,
+            "status": "Training not implemented yet (Phase 6)",
+            "config": config_path,
+        },
     )
 
     return {

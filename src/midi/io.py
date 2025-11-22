@@ -1,27 +1,28 @@
 """MIDI file I/O operations using mido."""
 
-import mido
-from mido import MidiFile, MidiTrack, Message, MetaMessage
 from pathlib import Path
-from typing import Tuple, List, Dict
-from .constants import DRUMS_CHANNEL, DEFAULT_TICKS_PER_BEAT
+
+import mido
+from mido import Message, MetaMessage, MidiFile, MidiTrack
+
+from .constants import DEFAULT_TICKS_PER_BEAT, DRUMS_CHANNEL
 
 
 def create_midi_file(
     tempo: int = 120,
-    time_signature: Tuple[int, int] = (4, 4),
+    time_signature: tuple[int, int] = (4, 4),
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
-    track_name: str = "Drums"
-) -> Tuple[MidiFile, MidiTrack]:
+    track_name: str = "Drums",
+) -> tuple[MidiFile, MidiTrack]:
     """
     Create a new MIDI file with proper setup.
-    
+
     Args:
         tempo: BPM
         time_signature: (numerator, denominator)
         ticks_per_beat: MIDI resolution
         track_name: Name for the track
-    
+
     Returns:
         (MidiFile, MidiTrack) tuple
     """
@@ -29,28 +30,30 @@ def create_midi_file(
     mid = MidiFile(ticks_per_beat=ticks_per_beat)
     track = MidiTrack()
     mid.tracks.append(track)
-    
+
     # Add track name
-    track.append(MetaMessage('track_name', name=track_name, time=0))
-    
+    track.append(MetaMessage("track_name", name=track_name, time=0))
+
     # Add tempo (microseconds per quarter note)
     tempo_value = mido.bpm2tempo(tempo)
-    track.append(MetaMessage('set_tempo', tempo=tempo_value, time=0))
-    
+    track.append(MetaMessage("set_tempo", tempo=tempo_value, time=0))
+
     # Add time signature
     numerator, denominator = time_signature
-    track.append(MetaMessage(
-        'time_signature',
-        numerator=numerator,
-        denominator=denominator,
-        clocks_per_click=24,
-        notated_32nd_notes_per_beat=8,
-        time=0
-    ))
-    
+    track.append(
+        MetaMessage(
+            "time_signature",
+            numerator=numerator,
+            denominator=denominator,
+            clocks_per_click=24,
+            notated_32nd_notes_per_beat=8,
+            time=0,
+        )
+    )
+
     # Set channel to 10 (drums)
-    track.append(Message('program_change', program=0, channel=DRUMS_CHANNEL, time=0))
-    
+    track.append(Message("program_change", program=0, channel=DRUMS_CHANNEL, time=0))
+
     return mid, track
 
 
@@ -60,11 +63,11 @@ def add_note(
     velocity: int,
     start_time: int,
     duration: int,
-    channel: int = DRUMS_CHANNEL
+    channel: int = DRUMS_CHANNEL,
 ) -> None:
     """
     Add a note to the track.
-    
+
     Args:
         track: MIDI track to add note to
         note: MIDI note number
@@ -74,31 +77,19 @@ def add_note(
         channel: MIDI channel (default: 9 for drums)
     """
     # Note On
-    track.append(Message(
-        'note_on',
-        note=note,
-        velocity=velocity,
-        time=start_time,
-        channel=channel
-    ))
-    
+    track.append(Message("note_on", note=note, velocity=velocity, time=start_time, channel=channel))
+
     # Note Off
-    track.append(Message(
-        'note_off',
-        note=note,
-        velocity=0,
-        time=duration,
-        channel=channel
-    ))
+    track.append(Message("note_off", note=note, velocity=0, time=duration, channel=channel))
 
 
 def read_midi_file(midi_path: Path) -> MidiFile:
     """
     Read a MIDI file.
-    
+
     Args:
         midi_path: Path to MIDI file
-    
+
     Returns:
         MidiFile object
     """
@@ -108,11 +99,11 @@ def read_midi_file(midi_path: Path) -> MidiFile:
 def save_midi_file(mid: MidiFile, output_path: Path) -> Path:
     """
     Save MIDI file to disk.
-    
+
     Args:
         mid: MidiFile object
         output_path: Output file path
-    
+
     Returns:
         Path to saved file
     """
@@ -123,13 +114,12 @@ def save_midi_file(mid: MidiFile, output_path: Path) -> Path:
 def beats_to_ticks(beats: float, ticks_per_beat: int) -> int:
     """
     Convert beats to MIDI ticks.
-    
+
     Args:
         beats: Number of beats
         ticks_per_beat: Ticks per quarter note
-    
+
     Returns:
         Number of ticks
     """
     return int(beats * ticks_per_beat)
-

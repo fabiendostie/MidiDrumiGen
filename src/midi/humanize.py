@@ -1,8 +1,7 @@
 """Humanization algorithms for drum patterns."""
 
-import random
-from typing import List, Dict, Optional
 import logging
+import random
 
 from .constants import DEFAULT_TICKS_PER_BEAT
 
@@ -10,9 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def apply_swing(
-    note_time: int,
-    swing_percentage: float,
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
+    note_time: int, swing_percentage: float, ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
 ) -> int:
     """
     Apply swing timing to offbeat notes.
@@ -51,10 +48,7 @@ def apply_swing(
 
 
 def apply_micro_timing(
-    note_time: int,
-    max_offset_ms: float,
-    tempo: int,
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
+    note_time: int, max_offset_ms: float, tempo: int, ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
 ) -> int:
     """
     Add subtle random timing variations.
@@ -87,10 +81,7 @@ def apply_micro_timing(
 
 
 def apply_velocity_variation(
-    base_velocity: int,
-    variation: float = 0.1,
-    min_velocity: int = 1,
-    max_velocity: int = 127
+    base_velocity: int, variation: float = 0.1, min_velocity: int = 1, max_velocity: int = 127
 ) -> int:
     """
     Add random velocity variation for dynamics.
@@ -118,11 +109,11 @@ def apply_velocity_variation(
 
 
 def apply_accent_pattern(
-    notes: List[Dict],
-    accent_positions: List[int],
+    notes: list[dict],
+    accent_positions: list[int],
     accent_boost: int = 20,
-    accent_reduction: int = 5
-) -> List[Dict]:
+    accent_reduction: int = 5,
+) -> list[dict]:
     """
     Apply accent pattern to emphasize specific beats.
 
@@ -151,24 +142,24 @@ def apply_accent_pattern(
     for i in accent_positions:
         if i < len(result):
             # Boost accented note
-            result[i]['velocity'] = min(127, result[i]['velocity'] + accent_boost)
+            result[i]["velocity"] = min(127, result[i]["velocity"] + accent_boost)
 
             # Reduce adjacent notes slightly for contrast
             if i > 0:
-                result[i-1]['velocity'] = max(1, result[i-1]['velocity'] - accent_reduction)
+                result[i - 1]["velocity"] = max(1, result[i - 1]["velocity"] - accent_reduction)
             if i < len(result) - 1:
-                result[i+1]['velocity'] = max(1, result[i+1]['velocity'] - accent_reduction)
+                result[i + 1]["velocity"] = max(1, result[i + 1]["velocity"] - accent_reduction)
 
     return result
 
 
 def add_ghost_notes(
-    notes: List[Dict],
+    notes: list[dict],
     probability: float = 0.3,
     ghost_velocity: int = 30,
     ghost_note: int = 38,  # Snare
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
+) -> list[dict]:
     """
     Add subtle ghost notes between main hits.
 
@@ -195,12 +186,12 @@ def add_ghost_notes(
     new_ghosts = []
 
     # Sort by time to ensure correct ordering
-    sorted_notes = sorted(notes, key=lambda n: n['time'])
+    sorted_notes = sorted(notes, key=lambda n: n["time"])
 
     for i in range(len(sorted_notes) - 1):
         if random.random() < probability:
-            curr_time = sorted_notes[i]['time']
-            next_time = sorted_notes[i + 1]['time']
+            curr_time = sorted_notes[i]["time"]
+            next_time = sorted_notes[i + 1]["time"]
 
             # Only add ghost if there's sufficient space (at least 16th note)
             min_spacing = ticks_per_beat / 4
@@ -208,11 +199,9 @@ def add_ghost_notes(
                 # Add ghost note between main notes
                 ghost_time = (curr_time + next_time) // 2
 
-                new_ghosts.append({
-                    'pitch': ghost_note,
-                    'velocity': ghost_velocity,
-                    'time': ghost_time
-                })
+                new_ghosts.append(
+                    {"pitch": ghost_note, "velocity": ghost_velocity, "time": ghost_time}
+                )
 
     # Combine original notes with ghost notes
     result.extend(new_ghosts)
@@ -224,71 +213,68 @@ def add_ghost_notes(
 
 # Producer-specific style parameters
 PRODUCER_STYLES = {
-    'j_dilla': {
-        'swing': 62.0,  # Signature Dilla swing
-        'micro_timing_ms': 20.0,  # More variation
-        'ghost_note_prob': 0.4,
-        'velocity_variation': 0.15,
-        'preferred_tempo_range': (85, 95),
+    "j_dilla": {
+        "swing": 62.0,  # Signature Dilla swing
+        "micro_timing_ms": 20.0,  # More variation
+        "ghost_note_prob": 0.4,
+        "velocity_variation": 0.15,
+        "preferred_tempo_range": (85, 95),
     },
-    'J Dilla': {  # Alias with proper casing
-        'swing': 62.0,
-        'micro_timing_ms': 20.0,
-        'ghost_note_prob': 0.4,
-        'velocity_variation': 0.15,
-        'preferred_tempo_range': (85, 95),
+    "J Dilla": {  # Alias with proper casing
+        "swing": 62.0,
+        "micro_timing_ms": 20.0,
+        "ghost_note_prob": 0.4,
+        "velocity_variation": 0.15,
+        "preferred_tempo_range": (85, 95),
     },
-    'metro_boomin': {
-        'swing': 52.0,  # Straighter timing
-        'micro_timing_ms': 5.0,  # Tighter quantization
-        'ghost_note_prob': 0.1,
-        'velocity_variation': 0.08,
-        'preferred_tempo_range': (130, 150),
+    "metro_boomin": {
+        "swing": 52.0,  # Straighter timing
+        "micro_timing_ms": 5.0,  # Tighter quantization
+        "ghost_note_prob": 0.1,
+        "velocity_variation": 0.08,
+        "preferred_tempo_range": (130, 150),
     },
-    'Metro Boomin': {  # Alias
-        'swing': 52.0,
-        'micro_timing_ms': 5.0,
-        'ghost_note_prob': 0.1,
-        'velocity_variation': 0.08,
-        'preferred_tempo_range': (130, 150),
+    "Metro Boomin": {  # Alias
+        "swing": 52.0,
+        "micro_timing_ms": 5.0,
+        "ghost_note_prob": 0.1,
+        "velocity_variation": 0.08,
+        "preferred_tempo_range": (130, 150),
     },
-    'questlove': {
-        'swing': 58.0,
-        'micro_timing_ms': 12.0,
-        'ghost_note_prob': 0.5,  # Lots of ghost notes
-        'velocity_variation': 0.20,  # Very dynamic
-        'preferred_tempo_range': (90, 110),
+    "questlove": {
+        "swing": 58.0,
+        "micro_timing_ms": 12.0,
+        "ghost_note_prob": 0.5,  # Lots of ghost notes
+        "velocity_variation": 0.20,  # Very dynamic
+        "preferred_tempo_range": (90, 110),
     },
-    'Questlove': {  # Alias
-        'swing': 58.0,
-        'micro_timing_ms': 12.0,
-        'ghost_note_prob': 0.5,
-        'velocity_variation': 0.20,
-        'preferred_tempo_range': (90, 110),
+    "Questlove": {  # Alias
+        "swing": 58.0,
+        "micro_timing_ms": 12.0,
+        "ghost_note_prob": 0.5,
+        "velocity_variation": 0.20,
+        "preferred_tempo_range": (90, 110),
     },
-    'unknown': {
-        'swing': 54.0,  # Slight humanization
-        'micro_timing_ms': 10.0,
-        'ghost_note_prob': 0.2,
-        'velocity_variation': 0.10,
-        'preferred_tempo_range': (90, 130),
+    "unknown": {
+        "swing": 54.0,  # Slight humanization
+        "micro_timing_ms": 10.0,
+        "ghost_note_prob": 0.2,
+        "velocity_variation": 0.10,
+        "preferred_tempo_range": (90, 130),
     },
-    'Unknown': {  # Alias
-        'swing': 54.0,
-        'micro_timing_ms': 10.0,
-        'ghost_note_prob': 0.2,
-        'velocity_variation': 0.10,
-        'preferred_tempo_range': (90, 130),
+    "Unknown": {  # Alias
+        "swing": 54.0,
+        "micro_timing_ms": 10.0,
+        "ghost_note_prob": 0.2,
+        "velocity_variation": 0.10,
+        "preferred_tempo_range": (90, 130),
     },
 }
 
 
 def apply_style_humanization(
-    notes: List[Dict],
-    style: str,
-    tempo: int,
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+    notes: list[dict], style: str, tempo: int, ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
+) -> list[dict]:
     """
     Apply producer-specific humanization to pattern.
 
@@ -309,12 +295,14 @@ def apply_style_humanization(
         >>> humanized = apply_style_humanization(notes, "J Dilla", 95)
     """
     # Get style parameters (default to 'unknown' if style not found)
-    style_key = style.lower().replace(' ', '_')
+    style_key = style.lower().replace(" ", "_")
     if style_key not in PRODUCER_STYLES and style not in PRODUCER_STYLES:
         logger.warning(f"Unknown style '{style}', using default humanization")
-        style_params = PRODUCER_STYLES['unknown']
+        style_params = PRODUCER_STYLES["unknown"]
     else:
-        style_params = PRODUCER_STYLES.get(style, PRODUCER_STYLES.get(style_key, PRODUCER_STYLES['unknown']))
+        style_params = PRODUCER_STYLES.get(
+            style, PRODUCER_STYLES.get(style_key, PRODUCER_STYLES["unknown"])
+        )
 
     logger.debug(f"Applying {style} humanization: {style_params}")
 
@@ -324,37 +312,29 @@ def apply_style_humanization(
         humanized_note = note.copy()
 
         # Apply swing timing
-        if 'swing' in style_params:
-            humanized_note['time'] = apply_swing(
-                humanized_note['time'],
-                style_params['swing'],
-                ticks_per_beat
+        if "swing" in style_params:
+            humanized_note["time"] = apply_swing(
+                humanized_note["time"], style_params["swing"], ticks_per_beat
             )
 
         # Apply micro-timing variation
-        if 'micro_timing_ms' in style_params:
-            humanized_note['time'] = apply_micro_timing(
-                humanized_note['time'],
-                style_params['micro_timing_ms'],
-                tempo,
-                ticks_per_beat
+        if "micro_timing_ms" in style_params:
+            humanized_note["time"] = apply_micro_timing(
+                humanized_note["time"], style_params["micro_timing_ms"], tempo, ticks_per_beat
             )
 
         # Apply velocity variation
-        if 'velocity_variation' in style_params:
-            humanized_note['velocity'] = apply_velocity_variation(
-                humanized_note['velocity'],
-                style_params['velocity_variation']
+        if "velocity_variation" in style_params:
+            humanized_note["velocity"] = apply_velocity_variation(
+                humanized_note["velocity"], style_params["velocity_variation"]
             )
 
         humanized.append(humanized_note)
 
     # Add ghost notes if configured
-    if 'ghost_note_prob' in style_params and style_params['ghost_note_prob'] > 0:
+    if "ghost_note_prob" in style_params and style_params["ghost_note_prob"] > 0:
         humanized = add_ghost_notes(
-            humanized,
-            probability=style_params['ghost_note_prob'],
-            ticks_per_beat=ticks_per_beat
+            humanized, probability=style_params["ghost_note_prob"], ticks_per_beat=ticks_per_beat
         )
 
     return humanized

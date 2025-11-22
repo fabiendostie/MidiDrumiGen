@@ -1,11 +1,12 @@
 """Pattern generation API routes."""
 
 import logging
+
 from fastapi import APIRouter, HTTPException, status
+
 from src.api.models import PatternGenerationRequest, TaskResponse
-from src.tasks.tasks import generate_pattern_task
-from src.models.styles import validate_tempo_for_style, StyleNotFoundError
 from src.research.producer_agent import ProducerResearchAgent
+from src.tasks.tasks import generate_pattern_task
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ def get_research_agent() -> ProducerResearchAgent:
         _research_agent = ProducerResearchAgent()
     return _research_agent
 
+
 router = APIRouter()
 
 
@@ -29,7 +31,7 @@ router = APIRouter()
     response_model=TaskResponse,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Generate drum pattern",
-    description="Queue a drum pattern generation task. Supports ANY producer name via dynamic research."
+    description="Queue a drum pattern generation task. Supports ANY producer name via dynamic research.",
 )
 async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
     """
@@ -84,8 +86,8 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
             logger.error(f"Missing producer name: {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either 'producer_name' or 'producer_style' must be provided"
-            )
+                detail="Either 'producer_name' or 'producer_style' must be provided",
+            ) from e
 
         logger.info(
             f"Pattern generation request: {producer_name}, "
@@ -98,8 +100,8 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
 
         try:
             style_profile = await agent.research_producer(producer_name)
-            research_quality = style_profile.get('research_quality', 'unknown')
-            cached = style_profile.get('cached', False)
+            research_quality = style_profile.get("research_quality", "unknown")
+            cached = style_profile.get("cached", False)
 
             logger.info(
                 f"Producer research complete: {producer_name} "
@@ -110,11 +112,11 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
             logger.error(f"Producer research failed for {producer_name}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to research producer '{producer_name}': {str(e)}"
-            )
+                detail=f"Failed to research producer '{producer_name}': {str(e)}",
+            ) from e
 
         # Validate tempo suggestion (warning only)
-        tempo_range = style_profile.get('style_params', {}).get('tempo_range', [60, 200])
+        tempo_range = style_profile.get("style_params", {}).get("tempo_range", [60, 200])
         if tempo_range:
             min_tempo, max_tempo = tempo_range
             if not (min_tempo <= request.tempo <= max_tempo):
@@ -142,7 +144,7 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
         return TaskResponse(
             task_id=task.id,
             status="queued",
-            message=f"Pattern generation queued for {producer_name} ({research_quality} quality)"
+            message=f"Pattern generation queued for {producer_name} ({research_quality} quality)",
         )
 
     except HTTPException:
@@ -152,5 +154,5 @@ async def generate_pattern(request: PatternGenerationRequest) -> TaskResponse:
         logger.error(f"Failed to queue generation task: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to queue generation task: {str(e)}"
-        )
+            detail=f"Failed to queue generation task: {str(e)}",
+        ) from e

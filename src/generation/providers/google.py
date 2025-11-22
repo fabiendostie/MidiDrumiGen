@@ -14,7 +14,7 @@ from .base import (
     extract_json_payload,
 )
 
-DEFAULT_GEMINI_MODEL = "gemini-2.5-pro"
+DEFAULT_GEMINI_MODEL = "gemini-3-pro-preview"
 
 
 class GoogleProvider(BaseLLMProvider):

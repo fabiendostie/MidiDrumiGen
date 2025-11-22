@@ -1,25 +1,23 @@
 """MIDI pattern export pipeline using mido."""
 
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
 import logging
+from pathlib import Path
 
-import mido
-from mido import MidiFile, MidiTrack, Message, MetaMessage
+from mido import Message, MetaMessage
 
+from .constants import DEFAULT_TICKS_PER_BEAT
+from .humanize import apply_style_humanization
 from .io import create_midi_file, save_midi_file
 from .validate import validate_drum_pattern
-from .humanize import apply_style_humanization
-from .constants import DEFAULT_TICKS_PER_BEAT
 
 logger = logging.getLogger(__name__)
 
 
 def export_pattern(
-    notes: List[Dict],
+    notes: list[dict],
     output_path: Path,
     tempo: int = 120,
-    time_signature: Tuple[int, int] = (4, 4),
+    time_signature: tuple[int, int] = (4, 4),
     humanize: bool = True,
     style_name: str = "Unknown",
     ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT,
@@ -80,10 +78,7 @@ def export_pattern(
     if humanize:
         logger.debug(f"Applying humanization with style: {style_name}")
         processed_notes = apply_style_humanization(
-            processed_notes,
-            style=style_name,
-            tempo=tempo,
-            ticks_per_beat=ticks_per_beat
+            processed_notes, style=style_name, tempo=tempo, ticks_per_beat=ticks_per_beat
         )
 
     # 3. Create MIDI file with metadata
@@ -91,7 +86,7 @@ def export_pattern(
         tempo=tempo,
         time_signature=time_signature,
         ticks_per_beat=ticks_per_beat,
-        track_name=f"Drums - {style_name}"
+        track_name=f"Drums - {style_name}",
     )
 
     # 4. Create MIDI events with absolute times
@@ -99,39 +94,43 @@ def export_pattern(
     # then sort by time, then convert to delta times
 
     midi_events = []
-    NOTE_DURATION = 10  # Short duration for drum hits
+    note_duration = 10  # Short duration for drum hits
 
     for note in processed_notes:
-        note_time = note['time']
-        pitch = note['pitch']
-        velocity = note['velocity']
+        note_time = note["time"]
+        pitch = note["pitch"]
+        velocity = note["velocity"]
 
         # Create note on event with absolute time
-        midi_events.append({
-            'type': 'note_on',
-            'note': pitch,
-            'velocity': velocity,
-            'time': note_time,
-            'channel': 9
-        })
+        midi_events.append(
+            {
+                "type": "note_on",
+                "note": pitch,
+                "velocity": velocity,
+                "time": note_time,
+                "channel": 9,
+            }
+        )
 
         # Create note off event with absolute time
-        midi_events.append({
-            'type': 'note_off',
-            'note': pitch,
-            'velocity': 0,
-            'time': note_time + NOTE_DURATION,
-            'channel': 9
-        })
+        midi_events.append(
+            {
+                "type": "note_off",
+                "note": pitch,
+                "velocity": 0,
+                "time": note_time + note_duration,
+                "channel": 9,
+            }
+        )
 
     # Sort all events by time
-    midi_events.sort(key=lambda e: e['time'])
+    midi_events.sort(key=lambda e: e["time"])
 
     # Convert absolute times to delta times and add to track
     last_time = 0
     for event in midi_events:
         # Calculate delta time
-        delta_time = event['time'] - last_time
+        delta_time = event["time"] - last_time
 
         # Ensure delta time is non-negative
         if delta_time < 0:
@@ -139,19 +138,21 @@ def export_pattern(
             delta_time = 0
 
         # Add event to track
-        track.append(Message(
-            event['type'],
-            note=event['note'],
-            velocity=event['velocity'],
-            time=delta_time,
-            channel=event['channel']
-        ))
+        track.append(
+            Message(
+                event["type"],
+                note=event["note"],
+                velocity=event["velocity"],
+                time=delta_time,
+                channel=event["channel"],
+            )
+        )
 
         # Update last time
-        last_time = event['time']
+        last_time = event["time"]
 
     # 5. Add end of track marker
-    track.append(MetaMessage('end_of_track', time=0))
+    track.append(MetaMessage("end_of_track", time=0))
 
     # 6. Save MIDI file
     save_midi_file(mid, output_path)
@@ -161,10 +162,8 @@ def export_pattern(
 
 
 def detokenize_to_notes(
-    tokens: List[int],
-    tokenizer,
-    ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
-) -> List[Dict]:
+    tokens: list[int], tokenizer, ticks_per_beat: int = DEFAULT_TICKS_PER_BEAT
+) -> list[dict]:
     """
     Convert tokenized pattern to note list.
 
@@ -191,15 +190,12 @@ def detokenize_to_notes(
     #     {'pitch': 42, 'velocity': 80, 'time': 240},
     # ]
 
-    raise NotImplementedError("Tokenizer integration pending - use export_pattern with notes directly")
+    raise NotImplementedError(
+        "Tokenizer integration pending - use export_pattern with notes directly"
+    )
 
 
-def export_from_tokens(
-    tokens: List[int],
-    tokenizer,
-    output_path: Path,
-    **kwargs
-) -> Path:
+def export_from_tokens(tokens: list[int], tokenizer, output_path: Path, **kwargs) -> Path:
     """
     High-level export function that handles tokenization.
 

@@ -1,10 +1,11 @@
 """Test suite for Phase 4: API Routes."""
 
-import sys
-from pathlib import Path
-import requests
-import time
 import json
+import sys
+import time
+from pathlib import Path
+
+import requests
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -60,13 +61,10 @@ def test_generate_endpoint():
         "humanize": True,
         "temperature": 1.0,
         "top_k": 50,
-        "top_p": 0.9
+        "top_p": 0.9,
     }
 
-    response = requests.post(
-        f"{API_BASE_URL}/api/v1/generate",
-        json=request_data
-    )
+    response = requests.post(f"{API_BASE_URL}/api/v1/generate", json=request_data)
 
     assert response.status_code == 202, f"Expected 202, got {response.status_code}"
     data = response.json()
@@ -85,7 +83,7 @@ def test_generate_endpoint():
         print(f"  Attempt {i+1}: Status = {status_data['status']}")
 
         if status_data["status"] == "completed":
-            print(f"[PASS] Task completed")
+            print("[PASS] Task completed")
             print(f"  Result: {json.dumps(status_data['result'], indent=2)}")
             return status_data
 
@@ -99,9 +97,9 @@ def test_generate_endpoint():
 
 def run_all_tests():
     """Run all API tests."""
-    print("="*70)
+    print("=" * 70)
     print("PHASE 4 API TEST SUITE")
-    print("="*70)
+    print("=" * 70)
 
     print("\nNOTE: Ensure API server is running:")
     print("  uvicorn src.api.main:app --reload")
@@ -113,9 +111,9 @@ def run_all_tests():
         test_styles_endpoint()
         test_generate_endpoint()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("[SUCCESS] All API tests passed!")
-        print("="*70)
+        print("=" * 70)
 
     except AssertionError as e:
         print(f"\n[FAIL] Test assertion failed: {e}")
@@ -127,6 +125,7 @@ def run_all_tests():
     except Exception as e:
         print(f"\n[FAIL] Test error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

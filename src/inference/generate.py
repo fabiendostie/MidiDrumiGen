@@ -1,7 +1,7 @@
 """Pattern generation inference using trained models."""
 
 import logging
-from typing import List, Optional, Any
+from typing import Any
 
 import torch
 
@@ -12,13 +12,14 @@ logger = logging.getLogger(__name__)
 
 class GenerationError(Exception):
     """Raised when pattern generation fails."""
+
     pass
 
 
 def generate_pattern(
     model: DrumPatternTransformer,
     tokenizer: Any,
-    prompt_tokens: Optional[List[int]] = None,
+    prompt_tokens: list[int] | None = None,
     num_bars: int = 4,
     temperature: float = 1.0,
     top_k: int = 50,
@@ -26,7 +27,7 @@ def generate_pattern(
     max_length: int = 512,
     device: str = "cpu",
     style_id: int = 0,
-) -> List[int]:
+) -> list[int]:
     """
     Generate drum pattern tokens using the model.
 
@@ -78,12 +79,12 @@ def generate_pattern(
         model.eval()
 
         # Prepare starting tokens
-        BOS_TOKEN_ID = 1  # Beginning of sequence
-        EOS_TOKEN_ID = 2  # End of sequence
+        bos_token_id = 1  # Beginning of sequence
+        eos_token_id = 2  # End of sequence
 
         if prompt_tokens is None:
             # Start with BOS token
-            input_ids = torch.tensor([[BOS_TOKEN_ID]], dtype=torch.long, device=device)
+            input_ids = torch.tensor([[bos_token_id]], dtype=torch.long, device=device)
         else:
             # Use provided prompt
             input_ids = torch.tensor([prompt_tokens], dtype=torch.long, device=device)
@@ -100,7 +101,9 @@ def generate_pattern(
             for step in range(max_length):
                 # Forward pass through model
                 outputs = model(input_ids, style_ids)
-                logits = outputs.logits[:, -1, :]  # Get logits for last position (batch, vocab_size)
+                logits = outputs.logits[
+                    :, -1, :
+                ]  # Get logits for last position (batch, vocab_size)
 
                 # Apply temperature scaling
                 if temperature != 1.0:
@@ -112,7 +115,7 @@ def generate_pattern(
                     top_k_values, top_k_indices = torch.topk(logits, min(top_k, logits.size(-1)))
                     # Set all other values to -inf
                     indices_to_remove = logits < top_k_values[:, -1, None]
-                    logits = logits.masked_fill(indices_to_remove, float('-inf'))
+                    logits = logits.masked_fill(indices_to_remove, float("-inf"))
 
                 # Nucleus (top-p) filtering
                 if top_p < 1.0:
@@ -129,7 +132,7 @@ def generate_pattern(
                     indices_to_remove = sorted_indices_to_remove.scatter(
                         1, sorted_indices, sorted_indices_to_remove
                     )
-                    logits = logits.masked_fill(indices_to_remove, float('-inf'))
+                    logits = logits.masked_fill(indices_to_remove, float("-inf"))
 
                 # Sample from the filtered distribution
                 probs = torch.softmax(logits, dim=-1)
@@ -143,7 +146,7 @@ def generate_pattern(
                 next_token = torch.multinomial(probs, num_samples=1)
 
                 # Check for EOS token (end generation early)
-                if next_token.item() == EOS_TOKEN_ID:
+                if next_token.item() == eos_token_id:
                     logger.debug(f"EOS token generated at step {step}")
                     break
 
@@ -159,15 +162,15 @@ def generate_pattern(
 
         return generated_tokens
 
-    except torch.cuda.OutOfMemoryError:
+    except torch.cuda.OutOfMemoryError as e:
         logger.error("GPU out of memory during generation")
         raise GenerationError(
             "GPU out of memory. Try reducing max_length or using CPU device."
-        )
+        ) from e
 
     except Exception as e:
         logger.error(f"Generation failed: {e}")
-        raise GenerationError(f"Pattern generation failed: {str(e)}")
+        raise GenerationError(f"Pattern generation failed: {str(e)}") from e
 
 
 def generate_batch(
@@ -180,8 +183,8 @@ def generate_batch(
     top_p: float = 0.9,
     max_length: int = 512,
     device: str = "cpu",
-    style_ids: Optional[List[int]] = None,
-) -> List[List[int]]:
+    style_ids: list[int] | None = None,
+) -> list[list[int]]:
     """
     Generate multiple patterns in parallel (batch generation).
 
@@ -218,7 +221,9 @@ def generate_batch(
     if style_ids is None:
         style_ids = [0] * batch_size
     elif len(style_ids) != batch_size:
-        raise ValueError(f"style_ids length ({len(style_ids)}) must match batch_size ({batch_size})")
+        raise ValueError(
+            f"style_ids length ({len(style_ids)}) must match batch_size ({batch_size})"
+        )
 
     # Generate each pattern (sequential for now - can be optimized later)
     patterns = []
@@ -242,9 +247,7 @@ def generate_batch(
 
 
 def estimate_generation_time(
-    num_bars: int,
-    device: str = "cuda",
-    model_size: str = "base"
+    num_bars: int, device: str = "cuda", model_size: str = "base"
 ) -> float:
     """
     Estimate generation time for a pattern.

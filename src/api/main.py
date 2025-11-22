@@ -2,18 +2,19 @@
 
 import logging
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Callable
 
-from fastapi import FastAPI, Request, Response, status
+import redis
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import redis
+
+from src.api.routes import generate, status, styles
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ async def lifespan(app: FastAPI):
 
     # Verify Redis connection
     try:
-        r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
         r.ping()
         logger.info("✓ Redis connection successful")
     except redis.ConnectionError as e:
@@ -77,8 +78,7 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
 
     # Log response
     logger.info(
-        f"← {request.method} {request.url.path} "
-        f"[{response.status_code}] ({duration:.3f}s)"
+        f"← {request.method} {request.url.path} " f"[{response.status_code}] ({duration:.3f}s)"
     )
 
     return response
@@ -94,8 +94,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         content={
             "error": "Internal server error",
             "message": str(exc),
-            "path": str(request.url.path)
-        }
+            "path": str(request.url.path),
+        },
     )
 
 
@@ -106,21 +106,18 @@ async def root():
         "name": "Drum Pattern Generator API",
         "version": "0.1.0",
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint with dependency status."""
-    health_status = {
-        "status": "healthy",
-        "redis": "unknown"
-    }
+    health_status = {"status": "healthy", "redis": "unknown"}
 
     # Check Redis connection
     try:
-        r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
         r.ping()
         health_status["redis"] = "connected"
     except redis.ConnectionError:
@@ -130,13 +127,9 @@ async def health():
     return health_status
 
 
-# Import routes
-from src.api.routes import generate, status, styles
-
 # Register routers
 app.include_router(generate.router, prefix="/api/v1", tags=["generation"])
 app.include_router(status.router, prefix="/api/v1", tags=["status"])
 app.include_router(styles.router, prefix="/api/v1", tags=["styles"])
 
 logger.info("✓ API routes registered")
-
