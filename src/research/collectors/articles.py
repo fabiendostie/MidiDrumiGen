@@ -182,7 +182,7 @@ class WebArticleCollector(BaseCollector):
             return articles
 
         except Exception as e:
-            raise CollectorError(f"Article collection failed: {e}")
+            raise CollectorError(f"Article collection failed: {e}") from e
 
     async def _scrape_site(
         self, site_name: str, config: dict[str, Any], artist_name: str
@@ -219,17 +219,19 @@ class WebArticleCollector(BaseCollector):
             self.logger.debug(f"Scraping {site_name}: {url}")
 
             # Fetch page
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    if resp.status == 404:
-                        self.logger.debug(f"{site_name}: Artist not found (404)")
-                        return articles
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp,
+            ):
+                if resp.status == 404:
+                    self.logger.debug(f"{site_name}: Artist not found (404)")
+                    return articles
 
-                    if resp.status != 200:
-                        self.logger.warning(f"{site_name} returned {resp.status}")
-                        return articles
+                if resp.status != 200:
+                    self.logger.warning(f"{site_name} returned {resp.status}")
+                    return articles
 
-                    html = await resp.text()
+                html = await resp.text()
 
             # Parse HTML
             soup = BeautifulSoup(html, "lxml")

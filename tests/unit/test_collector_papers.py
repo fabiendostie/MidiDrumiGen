@@ -8,6 +8,7 @@ Test Coverage: Tempo extraction, API parsing, confidence calculation
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiohttp import ClientResponseError
 
 from src.research.collectors.base import ResearchSource
 from src.research.collectors.papers import ScholarPaperCollector
@@ -21,31 +22,6 @@ from src.research.collectors.papers import ScholarPaperCollector
 def collector():
     """Create ScholarPaperCollector instance for testing."""
     return ScholarPaperCollector(timeout=60, min_papers=3)
-
-
-@pytest.fixture
-def mock_semantic_scholar_response():
-    """Mock response from Semantic Scholar API."""
-    return {
-        "data": [
-            {
-                "title": "Rhythmic Analysis of John Bonham Drumming Style",
-                "abstract": "Study of John Bonham typical tempo of 120 BPM with powerful groove",
-                "url": "https://example.com/paper1",
-                "authors": [{"name": "Smith, J."}, {"name": "Jones, A."}],
-                "citationCount": 45,
-                "year": 2020,
-            },
-            {
-                "title": "Heavy Rock Drumming Techniques",
-                "abstract": "Analysis of drumming at 110-140 beats per minute",
-                "url": "https://example.com/paper2",
-                "authors": [{"name": "Doe, J."}],
-                "citationCount": 12,
-                "year": 2019,
-            },
-        ]
-    }
 
 
 # =============================================================================
@@ -112,84 +88,125 @@ class TestConfidenceCalculation:
 
     def test_base_confidence(self, collector):
         """Should return base confidence when no factors provided."""
-        confidence = collector._calculate_confidence()
+        confidence = collector._calculate_paper_confidence({})
         assert confidence == 0.5
 
     def test_citation_count_bonus(self, collector):
         """Should add bonus for citation count."""
-        confidence = collector._calculate_confidence(citation_count=100)
+        confidence = collector._calculate_paper_confidence({"citationCount": 100})
         assert confidence > 0.5
         assert confidence <= 1.0
 
-    def test_relevance_score_bonus(self, collector):
-        """Should add bonus for relevance score."""
-        confidence = collector._calculate_confidence(relevance_score=0.8)
-        assert confidence > 0.5
+    def test_recency_bonus(self, collector):
+        """Should add bonus for recent papers."""
+        confidence_2022 = collector._calculate_paper_confidence({"year": 2022})
+        confidence_2018 = collector._calculate_paper_confidence({"year": 2018})
+        confidence_2010 = collector._calculate_paper_confidence({"year": 2010})
+        assert confidence_2022 > confidence_2018 > confidence_2010
 
-    def test_source_quality_bonus(self, collector):
-        """Should add bonus for source quality."""
-        confidence = collector._calculate_confidence(source_quality=0.9)
+    def test_relevance_bonus(self, collector):
+        """Should add bonus for tempo mentions."""
+        confidence = collector._calculate_paper_confidence({"abstract": "tempo of 120 BPM"})
         assert confidence > 0.5
 
     def test_confidence_capped_at_one(self, collector):
         """Should cap confidence at 1.0."""
-        confidence = collector._calculate_confidence(
-            citation_count=1000, relevance_score=1.0, source_quality=1.0
-        )
+        paper = {
+            "citationCount": 10000,
+            "year": 2023,
+            "abstract": "120 BPM 130 BPM 140 BPM 150 BPM",
+        }
+        confidence = collector._calculate_paper_confidence(paper)
         assert confidence == 1.0
 
 
 # =============================================================================
-# Test Semantic Scholar Integration
+# Test API Integrations
 # =============================================================================
 
 
 @pytest.mark.asyncio
-class TestSemanticScholarSearch:
-    """Test Semantic Scholar API integration."""
+class TestApiSearches:
+    """Test API integration methods."""
 
-    async def test_search_success(self, collector, mock_semantic_scholar_response):
-        """Should successfully search Semantic Scholar."""
-        with patch("aiohttp.ClientSession") as mock_session:
-            # Mock HTTP response
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json = AsyncMock(return_value=mock_semantic_scholar_response)
+    @patch("aiohttp.ClientSession.get")
+    async def test_semantic_scholar_success(
+        self, mock_get, collector, mock_semantic_scholar_response
+    ):
+        """Should successfully parse Semantic Scholar response."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json.return_value = mock_semantic_scholar_response
 
-            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
-                mock_response
-            )
+        async def __aenter__(self):
+            return mock_response
 
-            results = await collector._search_semantic_scholar("John Bonham")
+        mock_response.__aenter__ = __aenter__
+        mock_get.return_value = mock_response
 
-            assert len(results) == 2
-            assert all(isinstance(r, ResearchSource) for r in results)
-            assert results[0].source_type == "paper"
-            assert results[0].title == "Rhythmic Analysis of John Bonham Drumming Style"
-            assert 120 in results[0].extracted_data["tempo_mentions"]
+        results = await collector._search_semantic_scholar("John Bonham")
 
-    async def test_search_404(self, collector):
-        """Should handle 404 gracefully."""
-        with patch("aiohttp.ClientSession") as mock_session:
-            mock_response = AsyncMock()
-            mock_response.status = 404
+        assert len(results) == 2
+        assert results[0].title == "Rhythmic Analysis of John Bonham Drumming Style"
+        assert 120 in results[0].extracted_data["tempo_mentions"]
 
-            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
-                mock_response
-            )
+    @patch("aiohttp.ClientSession.get")
+    async def test_arxiv_success(self, mock_get, collector, mock_arxiv_response):
+        """Should successfully parse arXiv XML response."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.text.return_value = mock_arxiv_response
 
-            results = await collector._search_semantic_scholar("Unknown Artist")
-            assert results == []
+        async def __aenter__(self):
+            return mock_response
 
-    async def test_search_api_error(self, collector):
-        """Should handle API errors gracefully."""
-        with patch("aiohttp.ClientSession") as mock_session:
-            mock_session.return_value.__aenter__.return_value.get.side_effect = Exception(
-                "API Error"
-            )
+        mock_response.__aenter__ = __aenter__
+        mock_get.return_value = mock_response
 
-            results = await collector._search_semantic_scholar("John Bonham")
-            assert results == []
+        results = await collector._search_arxiv("Test Artist")
+        assert len(results) == 1
+        assert results[0].title == "Drum Pattern Analysis Using Deep Learning"
+        assert 95 in results[0].extracted_data["tempo_mentions"]
+
+    @patch("aiohttp.ClientSession.get")
+    async def test_crossref_success(self, mock_get, collector, mock_crossref_response):
+        """Should successfully parse CrossRef JSON response."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json.return_value = mock_crossref_response
+
+        async def __aenter__(self):
+            return mock_response
+
+        mock_response.__aenter__ = __aenter__
+        mock_get.return_value = mock_response
+
+        results = await collector._search_crossref("Test Artist")
+        assert len(results) == 1
+        assert results[0].title == "A Study of Rock Drumming"
+        assert 140 in results[0].extracted_data["tempo_mentions"]
+
+    @patch("aiohttp.ClientSession.get")
+    async def test_api_error_graceful_handling(self, mock_get, collector):
+        """Should handle API errors gracefully and return an empty list."""
+        mock_get.side_effect = ClientResponseError(
+            history=(), request_info=AsyncMock(), status=500, message="Server Error"
+        )
+
+        results = await collector._search_semantic_scholar("Error Artist")
+        assert results == []
+
+    @patch("aiohttp.ClientSession.get")
+    async def test_search_unexpected_exception(self, mock_get, collector):
+        """Should handle unexpected exceptions gracefully and return an empty list."""
+        mock_get.side_effect = Exception("Unexpected network issue")
+
+        results = await collector._search_semantic_scholar("Exceptional Artist")
+        assert results == []
+        results = await collector._search_arxiv("Exceptional Artist")
+        assert results == []
+        results = await collector._search_crossref("Exceptional Artist")
+        assert results == []
 
 
 # =============================================================================
@@ -204,34 +221,113 @@ class TestCollect:
     async def test_collect_success(self, collector):
         """Should successfully collect papers from all sources."""
         with (
-            patch.object(
-                collector,
-                "_search_semantic_scholar",
-                return_value=[
-                    ResearchSource(source_type="paper", title="Test Paper", confidence=0.8)
-                ],
-            ),
-            patch.object(collector, "_search_arxiv", return_value=[]),
-            patch.object(collector, "_search_crossref", return_value=[]),
+            patch.object(collector, "_search_semantic_scholar", new_callable=AsyncMock) as mock_ss,
+            patch.object(collector, "_search_arxiv", new_callable=AsyncMock) as mock_arxiv,
+            patch.object(collector, "_search_crossref", new_callable=AsyncMock) as mock_cr,
         ):
+            mock_ss.return_value = [
+                ResearchSource(
+                    source_type="paper",
+                    title="SS Paper",
+                    confidence=0.8,
+                    raw_content="",
+                    extracted_data={},
+                    metadata={},
+                )
+            ]
+            mock_arxiv.return_value = [
+                ResearchSource(
+                    source_type="paper",
+                    title="ArXiv Paper",
+                    confidence=0.7,
+                    raw_content="",
+                    extracted_data={},
+                    metadata={},
+                )
+            ]
+            mock_cr.return_value = []
+
             results = await collector.collect("John Bonham")
-            assert len(results) >= 1
-            assert all(r.source_type == "paper" for r in results)
+            assert len(results) == 2
+            assert all(isinstance(r, ResearchSource) for r in results)
+
+    async def test_collect_handles_exceptions(self, collector):
+        """Should continue collection if one source fails."""
+        with (
+            patch.object(collector, "_search_semantic_scholar", new_callable=AsyncMock) as mock_ss,
+            patch.object(collector, "_search_arxiv", new_callable=AsyncMock) as mock_arxiv,
+            patch.object(collector, "_search_crossref", new_callable=AsyncMock) as mock_cr,
+        ):
+            mock_ss.side_effect = Exception("Semantic Scholar API down")
+            mock_arxiv.return_value = [
+                ResearchSource(
+                    source_type="paper",
+                    title="ArXiv Paper",
+                    confidence=0.7,
+                    raw_content="",
+                    extracted_data={},
+                    metadata={},
+                )
+            ]
+            mock_cr.return_value = []
+
+            results = await collector.collect("Test Artist")
+            assert len(results) == 1
+            assert results[0].title == "ArXiv Paper"
 
     async def test_collect_warns_few_papers(self, collector, caplog):
         """Should warn when finding fewer than min_papers."""
         with (
-            patch.object(
-                collector,
-                "_search_semantic_scholar",
-                return_value=[ResearchSource(source_type="paper", title="Test", confidence=0.5)],
-            ),
-            patch.object(collector, "_search_arxiv", return_value=[]),
-            patch.object(collector, "_search_crossref", return_value=[]),
+            patch.object(collector, "_search_semantic_scholar", new_callable=AsyncMock) as mock_ss,
+            patch.object(collector, "_search_arxiv", new_callable=AsyncMock) as mock_arxiv,
+            patch.object(collector, "_search_crossref", new_callable=AsyncMock) as mock_cr,
         ):
+            mock_ss.return_value = [
+                ResearchSource(
+                    source_type="paper",
+                    title="Test",
+                    confidence=0.5,
+                    raw_content="",
+                    extracted_data={},
+                    metadata={},
+                )
+            ]
+            mock_arxiv.return_value = []
+            mock_cr.return_value = []
+
+            collector.min_papers = 2
             results = await collector.collect("Obscure Artist")
             assert len(results) < collector.min_papers
             assert "Only found" in caplog.text
+
+
+# =============================================================================
+# Test Rate Limiting
+# =============================================================================
+
+
+@pytest.mark.asyncio
+class TestRateLimiting:
+    """Test the rate limiting logic."""
+
+    async def test_wait_for_rate_limit_semantic_scholar(self, collector):
+        """Should wait if rate limit is exceeded."""
+        collector._SS_RATE_LIMIT = 2
+        collector._SS_RATE_WINDOW = 10
+
+        with (
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+            patch("time.time", side_effect=[100, 100.1, 101, 101.1, 102, 102.1, 108, 108.1]),
+        ):
+            await collector._wait_for_rate_limit_semantic_scholar()  # call 1, time=100
+            await collector._wait_for_rate_limit_semantic_scholar()  # call 2, time=101
+            await collector._wait_for_rate_limit_semantic_scholar()  # call 3, time=102, should wait
+
+            mock_sleep.assert_called_once()
+            # The third call at t=102 should wait for the first call at t=100 to expire.
+            # Window is 10s. Expiry is 100 + 10 = 110.
+            # Wait time = 110 - 102 = 8
+            assert mock_sleep.call_args[0][0] == pytest.approx(8.1)
 
 
 # =============================================================================
@@ -246,20 +342,23 @@ class TestRealAPIIntegration:
     """Integration tests with real APIs (requires network)."""
 
     async def test_real_semantic_scholar_search(self, collector):
-        """
-        Test real Semantic Scholar API call.
-
-        Note: This test requires network access and may be slow.
-        It may also fail if the API is unavailable or rate-limited.
-        """
+        """Test real Semantic Scholar API call."""
         results = await collector._search_semantic_scholar("John Bonham")
-        # Just verify it doesn't crash, results may vary
         assert isinstance(results, list)
+        # We can't assert a specific number, but we expect some results
+        if results:
+            assert isinstance(results[0], ResearchSource)
 
+    async def test_real_arxiv_search(self, collector):
+        """Test real arXiv API call."""
+        results = await collector._search_arxiv("drumming analysis")
+        assert isinstance(results, list)
+        if results:
+            assert isinstance(results[0], ResearchSource)
 
-# TODO: Add more tests
-# - Test arXiv XML parsing
-# - Test CrossRef API integration
-# - Test rate limiting with exponential backoff
-# - Test timeout handling
-# - Test parallel execution of all searches
+    async def test_real_crossref_search(self, collector):
+        """Test real CrossRef API call."""
+        results = await collector._search_crossref("drumming rhythm")
+        assert isinstance(results, list)
+        if results:
+            assert isinstance(results[0], ResearchSource)
