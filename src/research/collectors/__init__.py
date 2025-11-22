@@ -12,6 +12,7 @@ Collectors:
 """
 
 from .articles import WebArticleCollector
+from .audio import AudioAnalysisCollector
 from .base import (
     BaseCollector,
     CollectorError,
@@ -22,6 +23,7 @@ from .base import (
 from .papers import ScholarPaperCollector
 
 __all__ = [
+    "AudioAnalysisCollector",
     "BaseCollector",
     "CollectorError",
     "CollectorTimeoutError",
