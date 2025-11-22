@@ -20,6 +20,7 @@ from .base import (
     InsufficientDataError,
     ResearchSource,
 )
+from .midi_db import MidiDatabaseCollector
 from .papers import ScholarPaperCollector
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "CollectorError",
     "CollectorTimeoutError",
     "InsufficientDataError",
+    "MidiDatabaseCollector",
     "ResearchSource",
     "ScholarPaperCollector",
     "WebArticleCollector",
