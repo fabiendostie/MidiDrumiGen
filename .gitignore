@@ -34,6 +34,20 @@ venv.bak/
 *.swo
 *~
 .cursor/
+.cursorrules
+
+# BMAD and AI Context (local only)
+.bmad/
+.claude/
+.cursorcontext/
+.gemini/
+CLAUDE.md
+GEMINI.md
+handoff-prompt.json
+handoff-repo-cleanup.md
+
+# Full docs folder (local only)
+docs/
 
 # ============================================================================
 # v2.0 SPECIFIC IGNORES
@@ -228,3 +242,5 @@ docs/project-scan-report.json
 
 # Duplicate status file (use docs/sprint-artifacts/sprint-status.yaml)
 docs/sprint-status.yaml
+
+gha-creds-*.json
