@@ -217,16 +217,14 @@ class TestSiteScraping:
             "requires_transform": False,
         }
 
-        with patch("aiohttp.ClientSession") as mock_session:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.text = AsyncMock(return_value=drumming_article_html)
+        # Mock the retry_with_backoff to return our test data
+        async def mock_fetch():
+            return (drumming_article_html, 200)
 
-            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
-                mock_response
-            )
-
-            results = await collector._scrape_site("test_site", site_config, "John Bonham")
+        with patch.object(
+            collector, "_retry_with_backoff", return_value=(drumming_article_html, 200)
+        ):
+            results = await collector._scrape_site("drummerworld", site_config, "John Bonham")
 
             assert len(results) == 1
             assert results[0].source_type == "article"
@@ -354,9 +352,199 @@ class TestRealWebScraping:
         assert isinstance(results, list)
 
 
-# TODO: Add more tests
-# - Test robots.txt compliance
-# - Test timeout handling
-# - Test with Scrapy integration
-# - Test rate limiting
-# - Test concurrent scraping limits
+# =============================================================================
+# Test Robots.txt and Rate Limiting
+# =============================================================================
+
+
+@pytest.mark.asyncio
+class TestRobotsAndRateLimiting:
+    """Test robots.txt compliance and rate limiting."""
+
+    async def test_rate_limiting_delay(self, collector):
+        """Should enforce delay between requests to same site."""
+        import time
+
+        # First request sets the time
+        await collector._enforce_rate_limit("test_site")
+        first_time = time.time()
+
+        # Second request should be delayed
+        await collector._enforce_rate_limit("test_site")
+        second_time = time.time()
+
+        # Should have waited at least 2 seconds
+        assert second_time - first_time >= collector.REQUEST_DELAY - 0.1
+
+    async def test_different_sites_no_delay(self, collector):
+        """Should not delay between requests to different sites."""
+        import time
+
+        start = time.time()
+        await collector._enforce_rate_limit("site_a")
+        await collector._enforce_rate_limit("site_b")
+        elapsed = time.time() - start
+
+        # Should be nearly instant (less than delay)
+        assert elapsed < collector.REQUEST_DELAY
+
+    async def test_robots_txt_allowed(self, collector):
+        """Should return True for allowed URLs."""
+        # Mock robots.txt that allows everything
+        with patch.object(collector, "_robots_cache", {}):
+            # Default behavior when robots.txt can't be read is to allow
+            result = await collector._check_robots_txt(
+                "https://example.com", "https://example.com/page"
+            )
+            assert result is True
+
+
+# =============================================================================
+# Test Confidence Scoring
+# =============================================================================
+
+
+class TestConfidenceScoring:
+    """Test the confidence scoring algorithm."""
+
+    def test_source_weight_drummerworld(self, collector):
+        """Should use highest weight for Drummerworld."""
+        article_data = {
+            "site": "drummerworld",
+            "word_count": 0,
+            "keyword_count": 0,
+            "equipment": [],
+        }
+        confidence = collector._calculate_article_confidence(article_data)
+        assert confidence == 0.9
+
+    def test_source_weight_wikipedia(self, collector):
+        """Should use high weight for Wikipedia."""
+        article_data = {"site": "wikipedia", "word_count": 0, "keyword_count": 0, "equipment": []}
+        confidence = collector._calculate_article_confidence(article_data)
+        assert confidence == 0.8
+
+    def test_word_count_boost(self, collector):
+        """Should boost confidence for longer articles."""
+        short_article = {
+            "site": "wikipedia",
+            "word_count": 100,
+            "keyword_count": 0,
+            "equipment": [],
+        }
+        long_article = {
+            "site": "wikipedia",
+            "word_count": 5000,
+            "keyword_count": 0,
+            "equipment": [],
+        }
+
+        short_confidence = collector._calculate_article_confidence(short_article)
+        long_confidence = collector._calculate_article_confidence(long_article)
+
+        assert long_confidence > short_confidence
+
+    def test_keyword_count_boost(self, collector):
+        """Should boost confidence for more drumming keywords."""
+        low_keywords = {"site": "wikipedia", "word_count": 0, "keyword_count": 1, "equipment": []}
+        high_keywords = {"site": "wikipedia", "word_count": 0, "keyword_count": 10, "equipment": []}
+
+        low_confidence = collector._calculate_article_confidence(low_keywords)
+        high_confidence = collector._calculate_article_confidence(high_keywords)
+
+        assert high_confidence > low_confidence
+
+    def test_equipment_boost(self, collector):
+        """Should boost confidence for equipment mentions."""
+        no_equipment = {"site": "wikipedia", "word_count": 0, "keyword_count": 0, "equipment": []}
+        with_equipment = {
+            "site": "wikipedia",
+            "word_count": 0,
+            "keyword_count": 0,
+            "equipment": ["snare", "kick", "cymbal"],
+        }
+
+        no_eq_confidence = collector._calculate_article_confidence(no_equipment)
+        eq_confidence = collector._calculate_article_confidence(with_equipment)
+
+        assert eq_confidence > no_eq_confidence
+
+    def test_confidence_capped_at_1(self, collector):
+        """Should cap confidence at 1.0."""
+        maxed_article = {
+            "site": "drummerworld",
+            "word_count": 10000,
+            "keyword_count": 100,
+            "equipment": ["a", "b", "c", "d", "e"],
+        }
+        confidence = collector._calculate_article_confidence(maxed_article)
+        assert confidence == 1.0
+
+
+# =============================================================================
+# Test Error Handling
+# =============================================================================
+
+
+@pytest.mark.asyncio
+class TestErrorHandling:
+    """Test error handling scenarios."""
+
+    async def test_handle_429_rate_limit(self, collector):
+        """Should handle 429 rate limit response with retry."""
+        site_config = {"base": "https://example.com", "search": "/drummer/{artist}"}
+
+        with patch("aiohttp.ClientSession") as mock_session:
+            mock_response = AsyncMock()
+            mock_response.status = 429
+            mock_response.request_info = AsyncMock()
+            mock_response.history = []
+
+            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
+                mock_response
+            )
+
+            # Should return empty list after retries fail
+            results = await collector._scrape_site("test_site", site_config, "Artist")
+            assert results == []
+
+    async def test_handle_503_server_error(self, collector):
+        """Should handle 503 service unavailable."""
+        site_config = {"base": "https://example.com", "search": "/drummer/{artist}"}
+
+        with patch("aiohttp.ClientSession") as mock_session:
+            mock_response = AsyncMock()
+            mock_response.status = 503
+            mock_response.request_info = AsyncMock()
+            mock_response.history = []
+
+            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
+                mock_response
+            )
+
+            results = await collector._scrape_site("test_site", site_config, "Artist")
+            assert results == []
+
+    async def test_return_partial_results_on_site_failure(self, collector):
+        """Should return partial results if one site fails."""
+        success_result = ResearchSource(
+            source_type="article",
+            title="Success",
+            raw_content="drum beat rhythm groove cymbal",
+            confidence=0.6,
+            metadata={"site": "drummerworld", "word_count": 5},
+        )
+
+        with patch.object(
+            collector,
+            "_scrape_site",
+            side_effect=[
+                [success_result],  # First site succeeds
+                Exception("Network error"),  # Second site fails
+                [],  # Third site empty
+                [],  # Fourth site empty
+            ],
+        ):
+            results = await collector.collect("Test Artist")
+            assert len(results) == 1
+            assert results[0].title == "Success"
