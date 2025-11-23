@@ -12,6 +12,13 @@ import torch
 # Add project root to path to resolve imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Import fixtures from fixtures folder
+from tests.fixtures.mock_api_responses import (  # noqa: E402
+    mock_arxiv_response,
+    mock_crossref_response,
+    mock_semantic_scholar_response,
+)
+
 
 @pytest.fixture
 def temp_dir():
@@ -70,16 +77,9 @@ def sample_style_params():
     }
 
 
-# v1.x fixtures removed in v2.0 migration (PyTorch-based testing)
-# @pytest.fixture
-# def mock_model():
-#     """Create a mock model instance."""
-#     from src.inference.mock import MockDrumModel
-#     return MockDrumModel(vocab_size=500, n_styles=50)
-#
-# @pytest.fixture(autouse=True)
-# def reset_lru_cache():
-#     """Reset LRU cache before each test."""
-#     from src.inference.model_loader import load_model
-#     yield
-#     load_model.cache_clear()
+# Re-export for pytest discovery
+__all__ = [
+    "mock_semantic_scholar_response",
+    "mock_arxiv_response",
+    "mock_crossref_response",
+]
