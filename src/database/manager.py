@@ -325,7 +325,7 @@ class DatabaseManager:
                     logger.info(f"No StyleProfile found for artist: {artist_name}")
                     return []
 
-                if not query_profile.embedding:
+                if query_profile.embedding is None or len(query_profile.embedding) == 0:
                     logger.info(f"No embedding found for artist: {artist_name}")
                     return []
 
@@ -347,10 +347,17 @@ class DatabaseManager:
                 """
                 )
 
+                # Convert embedding to string format for pgvector
+                embedding = query_profile.embedding
+                if hasattr(embedding, "tolist"):
+                    embedding = embedding.tolist()
+                # pgvector expects string format like '[1.0, 2.0, 3.0]'
+                embedding_str = str(embedding)
+
                 result = await session.execute(
                     query,
                     {
-                        "query_embedding": query_profile.embedding,
+                        "query_embedding": embedding_str,
                         "artist_name": artist_name,
                         "limit": limit,
                     },

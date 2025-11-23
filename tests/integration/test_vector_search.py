@@ -22,7 +22,7 @@ from src.database.models import Artist, Base, StyleProfile
 
 # Skip if no database URL configured
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost/mididrumigen_test"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:changeme@localhost/mididrumigen_test"
 )
 
 
